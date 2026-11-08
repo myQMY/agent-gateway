@@ -3,6 +3,8 @@
 > 放在 Agent 运行时与模型供应商之间的统一出口。FastAPI 只做 HTTP 适配，
 > 路由 / 缓存 / 限流 / 幂等 / 成本核算全部是零第三方依赖、可单测的核心逻辑。
 > **评测装置 `agent-reliability-harness`（P1）是负载来源，本仓库是独立新仓库、独立 commit 历史，不修改 P1 任何文件。**
+>
+> English version: [README.en.md](README.en.md) · 简历 bullet: [docs/resume.md](docs/resume.md) · 面试追问预案: [docs/interview.md](docs/interview.md)
 
 ## 30 秒看懂
 
@@ -143,10 +145,14 @@ docker compose --profile verify run --rm verify
 - `docs/design.md` — W1 红线 R1–R6、四能力、指标定义、不许说的话
 - `docs/design-w2.md` — W2 范围、两条路径取舍、并发模型、生命周期修正记录
 - `docs/design-w3.md` — W3 三条边界、并发窗口实测修正、容器未实跑说明
+- `docs/design-w5-w6.md` — W5–W6 叙事红线、机器可读禁用短语清单、反面示例隔离约定
+- `docs/resume.md` — 可直接抄写的简历 bullet + 每个数字的边界 + 不能写进简历的话
+- `docs/interview.md` — 七组追问预案，每题「可说的话 / 依据 / 不许越界的话」
+- `README.en.md` — 与本文八个章节一一对齐的英文版
 - `bridge/README.md` — 如何挂 P1 负载、W4 直连步骤与红线
 - `experiments/runs/` — 回放归档三件（**随仓库入库**，`clone` 即可复查）
 - `experiments/views/replay-aa1142308d8d.html` — 示例 trace 视图（可逐字节复验）
-- `tests/` — 157 条 unittest；核心零依赖，`test_app.py` 在装了 fastapi 时才跑
+- `tests/` — 180 条 unittest（含 W5–W6 叙事守门 23 条）；核心零依赖，`test_app.py` 在装了 fastapi 时才跑
 
 ## 阶段
 
@@ -154,8 +160,9 @@ docker compose --profile verify run --rm verify
 | --- | --- | --- |
 | W1 | 设计写死、四能力核心、回放基准、FastAPI 薄适配、单测 | 已交付 |
 | W2 | 并发 / 容量闸门 / single-flight、SSE 完整语义、可选真实供应商适配器、并发不变量 | 已交付 |
-| W3 | 可选容器复现、负载不变量、trace 回放视图 | 本轮交付 |
+| W3 | 可选容器复现、负载不变量、trace 回放视图 | 已交付 |
 | W4 | 挂 P1 harness 直连跑真实对照（需用户本人执行与 API 预算） | 未做 |
-| W5–W6 | README 打磨、简历 bullet、面试追问预案 | 未做 |
+| W5–W6 | 英文 README、简历 bullet、面试追问预案、叙事红线守门 | 本轮交付 |
 
-每阶段一个 commit、可随时停，不自动扩张。许可证：MIT。
+每阶段一个 commit、可随时停，不自动扩张。W5–W6 是纯文档收尾、零行为代码变更，
+所有对外表述受 `docs/design-w5-w6.md` 的禁用短语清单约束。许可证：MIT。
