@@ -1,0 +1,33 @@
+# 可选：Docker 只是「另一种一键起服务方式」，不是复现前提。
+# 主复现路径（裸 Python，零容器）：python -m unittest discover -s tests -q
+#   docker compose up --build -d gateway          起 HTTP 服务
+#   docker compose --profile verify run --rm verify   跑与主路径完全相同的离线验收
+# 不引入 Redis / Postgres / MQ / K8s，不跑多副本（R6）。
+services:
+  gateway:
+    build: .
+    image: agent-gateway:w3
+    ports:
+      - "8000:8000"
+    command: ["uvicorn", "gateway.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  verify:
+    build: .
+    image: agent-gateway:w3
+    profiles: ["verify"]
+    working_dir: /app
+    # 纯离线：不依赖 gateway 服务、不访问网络、不产生 API 成本。
+    command:
+      - sh
+      - -c
+      - "python -m unittest discover -s tests -q && python -m gateway.bench && python -m gateway.loadgen --n 64 && python -m gateway.trace --run replay-aa1142308d8d --check"

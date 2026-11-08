@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trace 回放视图 · replay-aa1142308d8d</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #f6f7f9; color: #1f2329;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-size: 14px; line-height: 1.6; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 28px 24px 64px; }
+h1 { font-size: 24px; margin: 0 0 4px; }
+h2 { font-size: 17px; margin: 30px 0 12px; padding-bottom: 6px;
+  border-bottom: 1px solid #e3e6eb; }
+.sub { color: #5f6b7a; margin: 0 0 18px; }
+.note { background: #fff8e6; border: 1px solid #f0dca6; border-left: 4px solid #d9a441;
+  border-radius: 6px; padding: 12px 16px; margin: 16px 0 22px; }
+.note ul { margin: 6px 0 0; padding-left: 20px; }
+.card { background: #fff; border: 1px solid #e3e6eb; border-radius: 8px; padding: 16px; }
+table { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; }
+th, td { border: 1px solid #e6e9ee; padding: 7px 10px; text-align: left; vertical-align: top; }
+th { background: #f0f2f5; font-weight: 600; color: #38414d; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
+.small { font-size: 12px; color: #5f6b7a; }
+.tag { display: inline-block; border-radius: 4px; padding: 1px 6px; margin: 1px 3px 1px 0;
+  font-size: 11px; border: 1px solid #d7dce3; background: #f3f5f8; color: #414b58; }
+.tag.hit { background: #e8f4ec; border-color: #b6dcc3; color: #1d6b39; }
+.tag.idem { background: #e9eefb; border-color: #bcccf0; color: #2a4d97; }
+.tag.limit { background: #fbecea; border-color: #f0c3bd; color: #a3342a; }
+.tag.fallback { background: #fdf0e2; border-color: #f0d2a9; color: #925c14; }
+.st { font-weight: 600; }
+.st.ok { color: #1d6b39; } .st.warn { color: #a3342a; }
+.bar { background: #eceff3; border-radius: 3px; height: 9px; width: 100%; overflow: hidden; }
+.bar > span { display: block; height: 100%; background: #5a7fc4; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.kv td:first-child { width: 240px; color: #5f6b7a; }
+footer { margin-top: 34px; color: #6b7684; font-size: 12px;
+  border-top: 1px solid #e3e6eb; padding-top: 14px; }
+code { background: #eef1f5; border-radius: 3px; padding: 1px 5px; }
+</style></head><body><div class='wrap'>
+<h1>Trace 回放视图 · <span class='mono'>replay-aa1142308d8d</span></h1>
+<p class='sub'>config_hash <code>aa1142308d8d</code>　负载来源：合成日志（SHA256 派生）　归档行 1200 条</p>
+<div class='note'><strong>口径边界（必须连视图一起读）</strong><ul>
+<li>本页是<strong>已有归档的只读可视化</strong>，不是新实验；所有数字由 <code>decisions.jsonl</code> 全量复算，不新增任何指标或结论。</li>
+<li>默认上游是确定性 fake，<strong>零 API 成本、零网络调用</strong>；<code>p95</code> / 均值是 <strong>SHA256 派生的模拟延迟</strong>，不是网络延迟、不是生产 SLA。</li>
+<li>缓存命中率主要由 <code>repeat_rate</code> 这个自变量决定，不是优化成果；成本差只在「同一份请求流 + 单变量 <code>gateway_enabled</code>」内成立，不外推生产。</li>
+<li>与 P1 的关系是「只读任务集做回放负载」，<strong>不是运行时直连</strong>；W4 未做，本页不产 <code>pass^k</code> 结论。</li>
+</ul></div>
+<h2>1 · 运行配置</h2>
+<table class="kv"><thead><tr><th>配置字段</th><th>值</th></tr></thead><tbody>
+<tr><td class='mono'>cache_capacity</td><td class='mono'>128</td></tr>
+<tr><td class='mono'>cache_ttl_requests</td><td class='mono'>0</td></tr>
+<tr><td class='mono'>failure_rate</td><td class='mono'>0.12</td></tr>
+<tr><td class='mono'>fallback_models</td><td class='mono'>[&quot;gateway-fallback&quot;]</td></tr>
+<tr><td class='mono'>gateway_enabled</td><td class='mono'>true</td></tr>
+<tr><td class='mono'>models</td><td class='mono'>[&quot;gateway-primary&quot;]</td></tr>
+<tr><td class='mono'>n_requests</td><td class='mono'>600</td></tr>
+<tr><td class='mono'>prices</td><td class='mono'>[[&quot;gateway-primary&quot;, 0.15, 0.6], [&quot;gateway-fallback&quot;, 0.3, 1.2]]</td></tr>
+<tr><td class='mono'>repeat_rate</td><td class='mono'>0.35</td></tr>
+<tr><td class='mono'>rpm_limit</td><td class='mono'>0</td></tr>
+<tr><td class='mono'>seed</td><td class='mono'>11</td></tr>
+<tr><td class='mono'>tasks_name</td><td class='mono'>&quot;&quot;</td></tr>
+<tr><td class='mono'>window_requests</td><td class='mono'>100</td></tr>
+</tbody></table>
+<h2>2 · off / on 汇总</h2>
+<table><thead><tr><th>指标（由归档行全量复算）</th>
+<th class='num'>off（直通）</th><th class='num'>on（网关）</th></tr></thead><tbody>
+<tr><td>请求数</td><td class='num'>600</td><td class='num'>600</td></tr>
+<tr><td>200 响应</td><td class='num'>524</td><td class='num'>598</td></tr>
+<tr><td>429 限流</td><td class='num'>0</td><td class='num'>0</td></tr>
+<tr><td>502 失败</td><td class='num'>76</td><td class='num'>2</td></tr>
+<tr><td>缓存命中</td><td class='num'>0</td><td class='num'>72</td></tr>
+<tr><td>幂等重放</td><td class='num'>0</td><td class='num'>121</td></tr>
+<tr><td>限流拒绝</td><td class='num'>0</td><td class='num'>0</td></tr>
+<tr><td>降级使用</td><td class='num'>0</td><td class='num'>54</td></tr>
+<tr><td>总成本（USD）</td><td class='num'>0.0236733</td><td class='num'>0.02086695</td></tr>
+<tr><td>p95（<strong>模拟</strong> ms）</td><td class='num'>192.0</td><td class='num'>194.0</td></tr>
+<tr><td>均值（<strong>模拟</strong> ms）</td><td class='num'>121.547</td><td class='num'>86.957</td></tr>
+</tbody></table>
+<h2>3 · 事件分布</h2>
+<div class='grid'>
+<div class='card'><strong>off 格 · 事件分布</strong>
+<div style='margin-top:10px'><span class='small'>缓存命中　0 / 600　0.0%</span><div class='bar'><span style='width:0.00%'></span></div></div>
+<div style='margin-top:10px'><span class='small'>幂等重放　0 / 600　0.0%</span><div class='bar'><span style='width:0.00%'></span></div></div>
+<div style='margin-top:10px'><span class='small'>限流拒绝　0 / 600　0.0%</span><div class='bar'><span style='width:0.00%'></span></div></div>
+<div style='margin-top:10px'><span class='small'>降级使用　0 / 600　0.0%</span><div class='bar'><span style='width:0.00%'></span></div></div>
+</div>
+<div class='card'><strong>on 格 · 事件分布</strong>
+<div style='margin-top:10px'><span class='small'>缓存命中　72 / 600　12.0%</span><div class='bar'><span style='width:12.00%'></span></div></div>
+<div style='margin-top:10px'><span class='small'>幂等重放　121 / 600　20.17%</span><div class='bar'><span style='width:20.17%'></span></div></div>
+<div style='margin-top:10px'><span class='small'>限流拒绝　0 / 600　0.0%</span><div class='bar'><span style='width:0.00%'></span></div></div>
+<div style='margin-top:10px'><span class='small'>降级使用　54 / 600　9.0%</span><div class='bar'><span style='width:9.00%'></span></div></div>
+</div>
+</div>
+<h2>4 · 决策链路时间线</h2>
+<h3>off 格 · 决策链路时间线</h3>
+<p class='small'>统计基于全量 600 条归档行；下方时间线展示前 48 条（<code>--rows 0</code> 可展示全量）。</p>
+<table><thead><tr><th class='num'>index</th><th>caller</th><th>status</th><th>route</th><th>决策链路</th><th class='num'>attempts</th><th class='num'>cost_usd</th><th class='num'>模拟 ms</th><th>reasons</th></tr></thead><tbody>
+<tr><td class='num mono'>0</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00003705</td><td class='num mono'>50.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>1</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00003570</td><td class='num mono'>150.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>2</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00006465</td><td class='num mono'>100.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>3</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004365</td><td class='num mono'>99.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>4</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004065</td><td class='num mono'>85.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>5</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004065</td><td class='num mono'>173.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>6</td><td class='mono'>harness-a</td><td><span class='st warn'>502</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00000000</td><td class='num mono'>101.000</td><td class='mono small'>upstream_rate_limit</td></tr>
+<tr><td class='num mono'>7</td><td class='mono'>harness-b</td><td><span class='st warn'>502</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00000000</td><td class='num mono'>107.000</td><td class='mono small'>upstream_5xx</td></tr>
+<tr><td class='num mono'>8</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00002580</td><td class='num mono'>182.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>9</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00005790</td><td class='num mono'>50.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>10</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00003690</td><td class='num mono'>177.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>11</td><td class='mono'>harness-b</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004860</td><td class='num mono'>77.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>12</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00003720</td><td class='num mono'>93.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>13</td><td class='mono'>harness-b</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00005685</td><td class='num mono'>108.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>14</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00003240</td><td class='num mono'>115.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>15</td><td class='mono'>harness-b</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00003195</td><td class='num mono'>119.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>16</td><td class='mono'>harness-b</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004620</td><td class='num mono'>152.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>17</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004440</td><td class='num mono'>108.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>18</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00005745</td><td class='num mono'>116.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>19</td><td class='mono'>harness-b</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00003660</td><td class='num mono'>180.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>20</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00003375</td><td class='num mono'>88.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>21</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00002925</td><td class='num mono'>181.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>22</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004140</td><td class='num mono'>164.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>23</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00005955</td><td class='num mono'>79.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>24</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00005385</td><td class='num mono'>125.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>25</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00005235</td><td class='num mono'>142.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>26</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004380</td><td class='num mono'>161.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>27</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00006150</td><td class='num mono'>132.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>28</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00005355</td><td class='num mono'>89.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>29</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00006255</td><td class='num mono'>125.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>30</td><td class='mono'>harness-b</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004770</td><td class='num mono'>46.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>31</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00005220</td><td class='num mono'>120.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>32</td><td class='mono'>harness-a</td><td><span class='st warn'>502</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00000000</td><td class='num mono'>198.000</td><td class='mono small'>upstream_rate_limit</td></tr>
+<tr><td class='num mono'>33</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00002790</td><td class='num mono'>111.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>34</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00003750</td><td class='num mono'>64.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>35</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004605</td><td class='num mono'>102.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>36</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004995</td><td class='num mono'>179.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>37</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00003120</td><td class='num mono'>149.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>38</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004740</td><td class='num mono'>195.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>39</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00005610</td><td class='num mono'>199.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>40</td><td class='mono'>harness-b</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00005850</td><td class='num mono'>69.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>41</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00006195</td><td class='num mono'>61.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>42</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004620</td><td class='num mono'>106.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>43</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004260</td><td class='num mono'>198.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>44</td><td class='mono'>harness-c</td><td><span class='st warn'>502</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00000000</td><td class='num mono'>165.000</td><td class='mono small'>timeout</td></tr>
+<tr><td class='num mono'>45</td><td class='mono'>harness-b</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00006000</td><td class='num mono'>157.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>46</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00003735</td><td class='num mono'>93.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>47</td><td class='mono'>harness-c</td><td><span class='st warn'>502</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00000000</td><td class='num mono'>145.000</td><td class='mono small'>timeout</td></tr>
+</tbody></table>
+<h3>on 格 · 决策链路时间线</h3>
+<p class='small'>统计基于全量 600 条归档行；下方时间线展示前 48 条（<code>--rows 0</code> 可展示全量）。</p>
+<table><thead><tr><th class='num'>index</th><th>caller</th><th>status</th><th>route</th><th>决策链路</th><th class='num'>attempts</th><th class='num'>cost_usd</th><th class='num'>模拟 ms</th><th>reasons</th></tr></thead><tbody>
+<tr><td class='num mono'>0</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00003705</td><td class='num mono'>50.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>1</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='tag idem'>idempotent_replay</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>idempotent_replay</td></tr>
+<tr><td class='num mono'>2</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='tag hit'>cache_hit</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>cache_hit</td></tr>
+<tr><td class='num mono'>3</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004365</td><td class='num mono'>99.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>4</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004065</td><td class='num mono'>85.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>5</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='tag hit'>cache_hit</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>cache_hit</td></tr>
+<tr><td class='num mono'>6</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-fallback</td><td><span class='tag fallback'>fallback_used</span></td><td class='num'>2</td><td class='num mono'>0.00011130</td><td class='num mono'>179.000</td><td class='mono small'>gateway-primary:upstream_rate_limit</td></tr>
+<tr><td class='num mono'>7</td><td class='mono'>harness-b</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-fallback</td><td><span class='tag fallback'>fallback_used</span></td><td class='num'>2</td><td class='num mono'>0.00009750</td><td class='num mono'>169.000</td><td class='mono small'>gateway-primary:upstream_5xx</td></tr>
+<tr><td class='num mono'>8</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-fallback</td><td><span class='tag hit'>cache_hit</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>cache_hit</td></tr>
+<tr><td class='num mono'>9</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='tag idem'>idempotent_replay</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>idempotent_replay</td></tr>
+<tr><td class='num mono'>10</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00003690</td><td class='num mono'>177.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>11</td><td class='mono'>harness-b</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-fallback</td><td><span class='tag idem'>idempotent_replay</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>idempotent_replay</td></tr>
+<tr><td class='num mono'>12</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-fallback</td><td><span class='tag idem'>idempotent_replay</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>idempotent_replay</td></tr>
+<tr><td class='num mono'>13</td><td class='mono'>harness-b</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-fallback</td><td><span class='tag idem'>idempotent_replay</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>idempotent_replay</td></tr>
+<tr><td class='num mono'>14</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00003240</td><td class='num mono'>115.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>15</td><td class='mono'>harness-b</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00003195</td><td class='num mono'>119.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>16</td><td class='mono'>harness-b</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-fallback</td><td><span class='tag hit'>cache_hit</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>cache_hit</td></tr>
+<tr><td class='num mono'>17</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004440</td><td class='num mono'>108.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>18</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00005745</td><td class='num mono'>116.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>19</td><td class='mono'>harness-b</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00003660</td><td class='num mono'>180.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>20</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='tag hit'>cache_hit</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>cache_hit</td></tr>
+<tr><td class='num mono'>21</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00002925</td><td class='num mono'>181.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>22</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='tag idem'>idempotent_replay</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>idempotent_replay</td></tr>
+<tr><td class='num mono'>23</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='tag idem'>idempotent_replay</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>idempotent_replay</td></tr>
+<tr><td class='num mono'>24</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00005385</td><td class='num mono'>125.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>25</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00005235</td><td class='num mono'>142.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>26</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004380</td><td class='num mono'>161.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>27</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='tag hit'>cache_hit</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>cache_hit</td></tr>
+<tr><td class='num mono'>28</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00005355</td><td class='num mono'>89.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>29</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00006255</td><td class='num mono'>125.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>30</td><td class='mono'>harness-b</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='tag idem'>idempotent_replay</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>idempotent_replay</td></tr>
+<tr><td class='num mono'>31</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-fallback</td><td><span class='tag idem'>idempotent_replay</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>idempotent_replay</td></tr>
+<tr><td class='num mono'>32</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-fallback</td><td><span class='tag hit'>cache_hit</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>cache_hit</td></tr>
+<tr><td class='num mono'>33</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00002790</td><td class='num mono'>111.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>34</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='tag hit'>cache_hit</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>cache_hit</td></tr>
+<tr><td class='num mono'>35</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004605</td><td class='num mono'>102.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>36</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004995</td><td class='num mono'>179.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>37</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='tag idem'>idempotent_replay</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>idempotent_replay</td></tr>
+<tr><td class='num mono'>38</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00004740</td><td class='num mono'>195.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>39</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00005610</td><td class='num mono'>199.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>40</td><td class='mono'>harness-b</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00005850</td><td class='num mono'>69.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>41</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00006195</td><td class='num mono'>61.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>42</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='tag hit'>cache_hit</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>cache_hit</td></tr>
+<tr><td class='num mono'>43</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='tag hit'>cache_hit</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>cache_hit</td></tr>
+<tr><td class='num mono'>44</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-fallback</td><td><span class='tag fallback'>fallback_used</span></td><td class='num'>2</td><td class='num mono'>0.00012330</td><td class='num mono'>128.000</td><td class='mono small'>gateway-primary:timeout</td></tr>
+<tr><td class='num mono'>45</td><td class='mono'>harness-b</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='tag hit'>cache_hit</span></td><td class='num'>0</td><td class='num mono'>0.00000000</td><td class='num mono'>2.000</td><td class='mono small'>cache_hit</td></tr>
+<tr><td class='num mono'>46</td><td class='mono'>harness-a</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-primary</td><td><span class='small'>upstream</span></td><td class='num'>1</td><td class='num mono'>0.00003735</td><td class='num mono'>93.000</td><td class='mono small'>-</td></tr>
+<tr><td class='num mono'>47</td><td class='mono'>harness-c</td><td><span class='st ok'>200</span></td><td class='mono'>gateway-fallback</td><td><span class='tag fallback'>fallback_used</span></td><td class='num'>2</td><td class='num mono'>0.00010290</td><td class='num mono'>241.000</td><td class='mono small'>gateway-primary:timeout</td></tr>
+</tbody></table>
+<footer>
+只读视图：不修改 <code>report.md</code> / <code>config.json</code> / <code>decisions.jsonl</code> 任何一个字节；同归档生成结果逐字节相同。<br>
+复现：<code>python -m gateway.trace --run replay-aa1142308d8d --rows 48 --check</code>　<code>python -m unittest discover -s tests -q</code><br>
+阶段 W3 · 设计边界见 <code>docs/design-w3.md</code>。
+</footer></div></body></html>

@@ -1,0 +1,12 @@
+.git
+.gitignore
+.workbuddy/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+results/
+traces/
+tmp/
+*.bundle

@@ -1,8 +1,9 @@
 # P4 设计：Agent 网关与 LLM 中间件
 
 > 本文件在写任何实现代码之前写死，用于钉死范围、自变量、指标定义与口径边界。
-> 日期：2026-11-08　仓库：`agent-gateway`（独立新仓库）　阶段：W1 设计 / W2 实现
-> W2 的范围、并发与 SSE 语义、真实供应商边界见 `docs/design-w2.md`；本文件 R1–R6 继续有效。
+> 日期：2026-11-08　仓库：`agent-gateway`（独立新仓库）　阶段：W1 设计 / W2–W3 实现
+> W2 的范围、并发与 SSE 语义、真实供应商边界见 `docs/design-w2.md`；
+> W3 的可选容器复现、负载不变量与 trace 视图边界见 `docs/design-w3.md`；本文件 R1–R6 继续有效。
 
 ## 0. 定位与红线
 
@@ -99,14 +100,18 @@ HTTP 层：`POST /v1/chat/completions`（OpenAI 兼容子集）、`GET /health`�
 | 阶段 | 内容 | 状态 |
 | --- | --- | --- |
 | W1 | 设计写死、核心四能力、回放基准、FastAPI 薄适配、unittest、单 commit | 已交付 |
-| W2 | 并发 / 有界队列 / single-flight、SSE 完整语义、可选真实供应商适配器 | **本轮交付**（见 `docs/design-w2.md`） |
-| W3 | Docker Compose 一键复现、压测脚本、trace 回放视图 | 未做 |
+| W2 | 并发 / 有界队列 / single-flight、SSE 完整语义、可选真实供应商适配器 | 已交付（见 `docs/design-w2.md`） |
+| W3 | Docker Compose 一键复现、压测脚本、trace 回放视图 | **本轮交付**（见 `docs/design-w3.md`） |
 | W4 | 挂 P1 harness 直连跑对照（需用户 API 预算与本人执行） | 未做 |
 | W5–W6 | README 打磨、简历 bullet、面试追问预案 | 未做 |
 
 W1 只交付可跑骨架，不假装做完整 5–6 周项目。W2 起按「每周 5 天、主投 Agent + 后端」推进，
 每阶段一个 commit、可随时停。**W2 的并发路径与 W1 的串行 off/on 对照是两条互不相交的路径，
 并发不变量不得与归档数字相减或拼曲线**（`docs/design-w2.md` §1）。后续阶段不自动扩张。
+
+W3 新增的容器复现是**可选便利而非硬前提**：主复现路径仍是裸 Python 的全量测试与归档复验，
+`docker compose` 只提供另一种一键起服务方式（`docs/design-w3.md` §1）。
+压测脚本只产并发不变量，trace 视图只读归档，两者都不新增任何结论数字。
 
 ## 7. 停止条件
 

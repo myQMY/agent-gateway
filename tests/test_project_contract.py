@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CORE_MODULES = (
     "config.py", "core.py", "components.py", "engine.py", "upstream.py",
     "replay.py", "concurrency.py", "sse.py", "real_upstream.py", "bench.py",
+    "loadgen.py", "trace.py",
 )
 
 
@@ -52,7 +53,7 @@ class TestZeroDependencyCore(unittest.TestCase):
             external = [m.split(".")[0] for m in imports
                         if m.split(".")[0] not in {
                             "__future__", "argparse", "atexit", "collections",
-                            "concurrent", "dataclasses", "hashlib", "json", "os",
+                            "concurrent", "dataclasses", "hashlib", "html", "json", "os",
                             "pathlib", "queue", "sys", "threading", "time",
                             "typing", "urllib",
                         } and not m.startswith(".")]
@@ -157,6 +158,95 @@ class TestW2Contract(unittest.TestCase):
             cfg = RealUpstreamConfig.from_env()
             self.assertIsNotNone(cfg)
             self.assertEqual(cfg.base_url, "https://example.invalid/v1")
+
+
+class TestW3Contract(unittest.TestCase):
+    """W3 红线：容器是可选便利、负载不产性能数字、trace 只读归档。"""
+
+    def test_design_w3_declares_the_three_boundaries(self):
+        d = text("docs/design-w3.md")
+        for phrase in ("可选便利", "R6", "只读", "不变量", "未实跑", "scheduling-dependent"):
+            self.assertIn(phrase, d)
+
+    def test_compose_has_no_distributed_infra(self):
+        # 注释里会写明「不引入 redis」等口径，只检查真正的清单内容。
+        lines = [l for l in text("docker-compose.yml").splitlines()
+                 if l.strip() and not l.strip().startswith("#")]
+        c = "\n".join(lines).lower()
+        for banned in ("redis", "postgres", "kafka", "kubernetes", "mysql", "celery"):
+            self.assertNotIn(banned, c)
+        for required in ("profiles", "verify", "gateway.trace --run", "unittest"):
+            self.assertIn(required, c)
+
+    def test_dockerfile_only_installs_existing_requirements(self):
+        d = text("Dockerfile")
+        self.assertIn("python:3.13-slim", d)
+        self.assertIn("pip install --no-cache-dir -r requirements.txt", d)
+        for banned in ("redis", "apt-get", "curl"):
+            self.assertNotIn(banned, d.lower())
+        lines = [l.strip() for l in text("requirements.txt").splitlines()
+                 if l.strip() and not l.startswith("#")]
+        self.assertEqual(len(lines), 3)
+
+    def test_dockerignore_excludes_secrets(self):
+        d = text(".dockerignore")
+        for item in (".env", ".git", "__pycache__/", ".workbuddy/"):
+            self.assertIn(item, d)
+
+    def test_docker_is_optional_not_a_prerequisite(self):
+        r = text("README.md")
+        self.assertIn("python -m unittest discover -s tests -q", r)
+        self.assertIn("可选", r)
+        d = text("docs/design-w3.md")
+        self.assertIn("主复现路径", d)
+
+    def test_loadgen_source_never_reads_a_clock_as_metric(self):
+        src = text("gateway/loadgen.py")
+        # docstring 里写了「源码不 import time」，因此只检查真实的 import 语句。
+        self.assertNotRegex(src, r"(?m)^\s*(?:from|import)\s+time\b")
+        low = src.lower()
+        for banned in ("perf_counter", "time.time", "qps", "p95", "wall_ms",
+                       "throughput", "elapsed"):
+            self.assertNotIn(banned, low, banned)
+
+    def test_loadgen_payload_has_no_performance_fields(self):
+        import json
+        from gateway.loadgen import build_payload
+        payload = build_payload(8, 2, 2, 4, 2, 11, ("capacity_gate", "rate_limit"))
+        dumped = json.dumps(payload).lower()
+        for banned in ("qps", "rps", "p95", "wall_ms", "elapsed", "throughput", "latency"):
+            self.assertNotIn(banned, dumped, banned)
+        self.assertTrue(payload["all_pass"])
+
+    def test_loadgen_refuses_to_write_into_archives(self):
+        from gateway.loadgen import main
+        with self.assertRaises(SystemExit):
+            main(["--n", "4", "--json-out", "experiments/runs/forbidden.json"])
+
+    def test_trace_source_never_writes_archives(self):
+        src = text("gateway/trace.py")
+        for banned in ("write_archive", "shutil", "unlink(", "rename("):
+            self.assertNotIn(banned, src)
+        self.assertIn("refusing to write a view into experiments/runs", src)
+
+    def test_example_view_is_committed_and_byte_reproducible(self):
+        from gateway.trace import load_run, render_html
+        data = load_run("replay-aa1142308d8d", ROOT / "experiments/runs")
+        expected = render_html(data).encode("utf-8")
+        view = ROOT / "experiments/views/replay-aa1142308d8d.html"
+        self.assertTrue(view.is_file(), "示例视图必须随仓库入库")
+        self.assertEqual(view.read_bytes(), expected)
+
+    def test_trace_view_has_no_clock_or_local_paths(self):
+        view = (ROOT / "experiments/views/replay-aa1142308d8d.html").read_text(encoding="utf-8")
+        for banned in ("Generated at", "D:/", "C:\\", "localhost", "<script", "http://", "https://"):
+            self.assertNotIn(banned, view, banned)
+
+    def test_w3_added_no_gateway_config_field(self):
+        import dataclasses
+        from gateway.config import GatewayConfig
+        self.assertEqual(GatewayConfig().config_hash(), "aa1142308d8d")
+        self.assertEqual(len(dataclasses.fields(GatewayConfig)), 13)
 
 
 if __name__ == "__main__":
