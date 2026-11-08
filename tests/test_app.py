@@ -93,6 +93,45 @@ class TestHttpLayer(unittest.TestCase):
         self.assertEqual(r.status_code, 429)
         self.assertEqual(r.json()["error"]["type"], "rate_limit_exceeded")
 
+    def test_sse_first_chunk_has_role_and_usage_tail(self):
+        import json
+        r = self.client.post("/v1/chat/completions", json=body("stream-role", stream=True))
+        self.assertEqual(r.status_code, 200)
+        chunks = [
+            json.loads(line[6:]) for line in r.text.splitlines()
+            if line.startswith("data: ") and line[6:] != "[DONE]"
+        ]
+        self.assertEqual(chunks[0]["choices"][0]["delta"]["role"], "assistant")
+        self.assertEqual(chunks[-1]["choices"][0]["finish_reason"], "stop")
+        self.assertIn("total_tokens", chunks[-1]["usage"])
+        self.assertTrue(r.text.rstrip().endswith("data: [DONE]"))
+
+    def test_streaming_error_uses_sse_error_event(self):
+        cfg = GatewayConfig(seed=11, failure_rate=0.0, rpm_limit=1, window_requests=1000)
+        client = TestClient(create_app(cfg))
+        headers = {"X-Caller": "same"}
+        client.post("/v1/chat/completions", json=body("a"), headers=headers)
+        r = client.post("/v1/chat/completions", json=body("b", stream=True), headers=headers)
+        self.assertIn("text/event-stream", r.headers["content-type"])
+        self.assertIn("event: error", r.text)
+        self.assertIn("rate_limit_exceeded", r.text)
+        self.assertIn("[DONE]", r.text)
+
+    def test_metrics_exposes_concurrency_stats(self):
+        self.client.post("/v1/chat/completions", json=body("a"))
+        data = self.client.get("/metrics").json()
+        self.assertIn("concurrency", data)
+        self.assertEqual(data["concurrency"]["workers"], 4)
+        self.assertGreaterEqual(data["concurrency"]["queue_submitted"], 1)
+
+    def test_health_reports_concurrent_mode(self):
+        self.assertTrue(self.client.get("/health").json()["concurrent"])
+        plain = TestClient(create_app(GatewayConfig(), concurrent=False))
+        self.assertFalse(plain.get("/health").json()["concurrent"])
+        self.assertEqual(
+            plain.post("/v1/chat/completions", json=body("sync")).status_code, 200
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

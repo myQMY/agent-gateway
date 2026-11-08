@@ -10,11 +10,20 @@ from __future__ import annotations
 """
 
 import hashlib
+from typing import Protocol
 
 from .config import GatewayConfig
 from .core import ChatRequest, UpstreamReply
 
 ERROR_KINDS = ("timeout", "upstream_5xx", "upstream_rate_limit")
+
+
+class Upstream(Protocol):
+    """上游契约：确定性 fake 与可选真实适配器都实现 complete。"""
+
+    def complete(
+        self, request: ChatRequest, attempt: int = 0, target: str | None = None
+    ) -> UpstreamReply: ...
 
 
 def _derive(seed: int | str, index: int, attempt: int, target: str, tag: str) -> int:

@@ -2,23 +2,30 @@ from __future__ import annotations
 
 """FastAPI 薄适配层：核心逻辑零依赖，本文件是唯一需要 fastapi 的地方。
 
-W1 范围：OpenAI 兼容 chat/completions 子集（非流式 + SSE）、health、metrics、config。
-单进程、非并发安全；并发与队列属 W2，本轮不实现、不宣称。
+W2：默认把请求提交到单进程有界队列 + 线程池（ConcurrentGateway），
+SSE 帧生成在 gateway/sse.py（纯标准库），本文件只做 StreamingResponse 包装、
+断线检测与 lifespan 生命周期管理。并发池不产出任何 off/on 对照数字。
 """
 
-import json
-from typing import Iterator
+import asyncio
+from contextlib import asynccontextmanager
+import itertools
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
+from .concurrency import ConcurrentGateway
 from .config import GatewayConfig
 from .core import ChatRequest, Decision
 from .engine import GatewayEngine
-
-
-def _completion_id(decision: Decision, config: GatewayConfig) -> str:
-    return f"gw-{decision.index}-{config.config_hash()}"
+from .sse import (
+    DEFAULT_CHUNK_SIZE,
+    SSE_HEADERS,
+    cancelled_frame,
+    completion_id as _completion_id,
+    sse_frames,
+)
+from .upstream import Upstream
 
 
 def _openai_shape(decision: Decision, config: GatewayConfig) -> dict:
@@ -54,45 +61,38 @@ def _openai_shape(decision: Decision, config: GatewayConfig) -> dict:
     }
 
 
-def _sse(decision: Decision, config: GatewayConfig) -> Iterator[str]:
-    text = decision.reply.text if decision.reply else ""
-    parts = [text[i : i + 16] for i in range(0, len(text), 16)] or [""]
-    for part in parts:
-        chunk = {
-            "id": _completion_id(decision, config),
-            "object": "chat.completion.chunk",
-            "created": 0,
-            "model": decision.route,
-            "choices": [{"index": 0, "delta": {"content": part}, "finish_reason": None}],
-        }
-        yield "data: " + json.dumps(chunk, sort_keys=True, ensure_ascii=False) + "\n\n"
-    tail = {
-        "id": _completion_id(decision, config),
-        "object": "chat.completion.chunk",
-        "created": 0,
-        "model": decision.route,
-        "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
-    }
-    yield "data: " + json.dumps(tail, sort_keys=True, ensure_ascii=False) + "\n\n"
-    yield "data: [DONE]\n\n"
-
-
 def create_app(
-    config: GatewayConfig | None = None, engine: GatewayEngine | None = None
+    config: GatewayConfig | None = None,
+    engine: GatewayEngine | None = None,
+    upstream: Upstream | None = None,
+    concurrent: bool = True,
+    workers: int = 4,
+    queue_capacity: int = 64,
 ) -> FastAPI:
     cfg = config or GatewayConfig()
-    eng = engine or GatewayEngine(cfg)
+    eng = engine or GatewayEngine(cfg, upstream=upstream)
+    pool = ConcurrentGateway(eng, workers=workers, queue_capacity=queue_capacity) if concurrent else None
+    index_counter = itertools.count()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        yield
+        if app.state.pool is not None:
+            app.state.pool.shutdown(wait=True)
+
     app = FastAPI(
-        title="Agent Gateway (W1 skeleton)",
-        version="0.1.0",
-        description="OpenAI 兼容子集 + 路由/缓存/限流/幂等；默认确定性 fake 上游",
+        title="Agent Gateway (W2)",
+        version="0.2.0",
+        description="OpenAI 兼容子集 + 路由/缓存/限流/幂等 + 单进程并发队列；默认确定性 fake 上游",
+        lifespan=lifespan,
     )
     app.state.config = cfg
     app.state.engine = eng
+    app.state.pool = pool
 
     @app.get("/health")
     async def health() -> dict:
-        return {"status": "ok", "config_hash": cfg.config_hash()}
+        return {"status": "ok", "config_hash": cfg.config_hash(), "concurrent": pool is not None}
 
     @app.get("/admin/config")
     async def admin_config() -> dict:
@@ -100,7 +100,10 @@ def create_app(
 
     @app.get("/metrics")
     async def metrics() -> dict:
-        return eng.metrics()
+        data = eng.metrics()
+        if pool is not None:
+            data["concurrency"] = pool.stats()
+        return data
 
     @app.post("/v1/chat/completions")
     async def chat_completions(request: Request):
@@ -123,10 +126,14 @@ def create_app(
             stream=bool(body.get("stream", False)),
             idempotency_key=request.headers.get("idempotency-key", "") or "",
             caller=request.headers.get("x-caller", "default") or "default",
-            index=len(eng.ledger.spans),
+            index=next(index_counter),
         )
-        decision = eng.handle(req)
-        if decision.status != 200:
+        if pool is not None:
+            decision = await asyncio.wrap_future(pool.submit(req))
+        else:
+            decision = eng.handle(req)
+
+        if decision.status != 200 and not req.stream:
             return JSONResponse(
                 {
                     "error": {
@@ -141,7 +148,15 @@ def create_app(
                 status_code=decision.status,
             )
         if req.stream:
-            return StreamingResponse(_sse(decision, cfg), media_type="text/event-stream")
+            async def stream():
+                for frame in sse_frames(decision, cfg, chunk_size=DEFAULT_CHUNK_SIZE):
+                    if await request.is_disconnected():
+                        yield cancelled_frame(decision, cfg)
+                        return
+                    yield frame
+            return StreamingResponse(
+                stream(), media_type="text/event-stream", headers=SSE_HEADERS
+            )
         return JSONResponse(_openai_shape(decision, cfg))
 
     return app

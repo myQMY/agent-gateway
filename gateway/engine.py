@@ -18,11 +18,11 @@ from .components import (
 )
 from .config import GatewayConfig
 from .core import ChatRequest, Decision, UpstreamReply
-from .upstream import FakeUpstream
+from .upstream import FakeUpstream, Upstream
 
 
 class GatewayEngine:
-    def __init__(self, config: GatewayConfig, upstream: FakeUpstream | None = None):
+    def __init__(self, config: GatewayConfig, upstream: Upstream | None = None):
         self.config = config
         self.upstream = upstream or FakeUpstream(config)
         self.cache = ExactCache(config.cache_capacity, config.cache_ttl_requests)
