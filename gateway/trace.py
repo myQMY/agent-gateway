@@ -249,7 +249,8 @@ def render_html(data: dict, timeline_rows: int = DEFAULT_TIMELINE_ROWS) -> str:
         "<li>缓存命中率主要由 <code>repeat_rate</code> 这个自变量决定，不是优化成果；"
         "成本差只在「同一份请求流 + 单变量 <code>gateway_enabled</code>」内成立，不外推生产。</li>",
         "<li>与 P1 的关系是「只读任务集做回放负载」，<strong>不是运行时直连</strong>；"
-        "W4 未做，本页不产 <code>pass^k</code> 结论。</li>",
+        "真实链路 W4 两格<strong>已执行一次</strong>（未产收益结论），"
+        "本页不产 <code>pass^k</code> 结论。</li>",
         "</ul></div>",
         "<h2>1 · 运行配置</h2>",
         _config_table(config),

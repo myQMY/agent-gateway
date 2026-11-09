@@ -45,7 +45,7 @@ code { background: #eef1f5; border-radius: 3px; padding: 1px 5px; }
 <li>本页是<strong>已有归档的只读可视化</strong>，不是新实验；所有数字由 <code>decisions.jsonl</code> 全量复算，不新增任何指标或结论。</li>
 <li>默认上游是确定性 fake，<strong>零 API 成本、零网络调用</strong>；<code>p95</code> / 均值是 <strong>SHA256 派生的模拟延迟</strong>，不是网络延迟、不是生产 SLA。</li>
 <li>缓存命中率主要由 <code>repeat_rate</code> 这个自变量决定，不是优化成果；成本差只在「同一份请求流 + 单变量 <code>gateway_enabled</code>」内成立，不外推生产。</li>
-<li>与 P1 的关系是「只读任务集做回放负载」，<strong>不是运行时直连</strong>；W4 未做，本页不产 <code>pass^k</code> 结论。</li>
+<li>与 P1 的关系是「只读任务集做回放负载」，<strong>不是运行时直连</strong>；真实链路 W4 两格<strong>已执行一次</strong>（未产收益结论），本页不产 <code>pass^k</code> 结论。</li>
 </ul></div>
 <h2>1 · 运行配置</h2>
 <table class="kv"><thead><tr><th>配置字段</th><th>值</th></tr></thead><tbody>

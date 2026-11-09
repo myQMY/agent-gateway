@@ -43,8 +43,8 @@ Agent 运行时与评测链路本身，任务集只是标尺，不是做一个�
 
 ## 3. 项目二：agent-gateway（Agent 网关 / LLM 中间件）
 
-> 独立新仓库，核心纯标准库，FastAPI 只做 HTTP 适配；157 条 unittest 全绿 / 3 commits /
-> 46 tracked（**裸标准库下 14 个 HTTP 测试 skip，隔离 venv 全跑**）；两组 W1 归档三件
+> 独立新仓库，核心纯标准库，FastAPI 只做 HTTP 适配；248 条 unittest 全绿 / 10 commits /
+> 61 tracked（**裸标准库下 14 个 HTTP 测试 skip，隔离 venv 全跑**）；两组 W1 归档三件
 > 逐字节可复现，`GatewayConfig` 零字段新增。
 
 - **做深四条网关决策链路**：模型路由 + fallback、规范化请求的精确缓存（LRU/TTL）、
@@ -99,7 +99,7 @@ Agent 运行时与评测链路本身，任务集只是标尺，不是做一个�
 | `W4 三轮两格 pass^k 0.00` | P1 `experiments/w4*report.md` | H1 未被检验（分母 0）、判分自由文本匹配是根因、不是护栏有效 |
 | `分辨率 1/N`、步进 `0.10 → 0.0333`、信息位点 `3 → 19` | P1 `experiments/w3_resolution.md` | 与 k 无关、跨任务集只谈分辨率、scripted 基线不可相减 |
 | `成本差 0.1185 / 0.1822` | P4 两组 W1 归档 | 只在该合成回放成立、固定价格表、不外推生产、不宣称省钱 |
-| `157 unittest`、`3 commits`、`46 tracked` | P4 仓库 | 裸标准库 skip 14 个 HTTP 测试，隔离 venv 全跑 |
+| `248 unittest`、`10 commits`、`61 tracked` | P4 仓库 | 含相当比例读归档与源码的守门测试；裸标准库 skip 14 个 HTTP 测试，隔离 venv 全跑 |
 | `32 同 key → 上游恰 1 次`、`40 @ limit3 → 200 恰 3 / 429 恰 37` | `gateway/bench.py` / `loadgen.py` | 并发不变量、不是 QPS / SLA / 生产吞吐 |
 
 ## 7. 不能写进简历的话 / 被追问时的诚实答法

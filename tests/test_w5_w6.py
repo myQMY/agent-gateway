@@ -19,15 +19,18 @@ EXTERNAL_DOCS = ("README.en.md", "docs/resume.md", "docs/interview.md")
 
 BANNED_START = "<!-- BANNED-PHRASES-START -->"
 BANNED_END = "<!-- BANNED-PHRASES-END -->"
+STRICT_START = "<!-- STRICT-PHRASES-START -->"
+STRICT_END = "<!-- STRICT-PHRASES-END -->"
 EXAMPLES_START = "<!-- FORBIDDEN-EXAMPLES-START -->"
 EXAMPLES_END = "<!-- FORBIDDEN-EXAMPLES-END -->"
 
 # 设计文档 §5.6：否定语境豁免（同一行内出现即跳过该行）。
+# 例外：阶段状态类短语由 STRICT-PHRASES 单独处理，命中即越界，不享本豁免。
 NEGATIONS = (
     "不是", "并非", "不得", "不能", "不宣称", "不写", "不说", "绝不",
     "未", "非", "无", "不产", "不外推", "不测", "不接", "不改", "没有",
     "not", "never", "no ", "cannot", "does not", "is not", "are not",
-    "neither", "nor ", "without", "not done",
+    "neither", "nor ", "without",
 )
 
 
@@ -42,6 +45,16 @@ def banned_phrases():
     block = d.split(BANNED_START, 1)[1].split(BANNED_END, 1)[0]
     m = re.search(r"```\s*\n(.*?)\n```", block, re.S)
     assert m, "禁用短语必须放在 fenced code block 内"
+    return [ln.strip() for ln in m.group(1).splitlines() if ln.strip()]
+
+
+def strict_phrases():
+    """从设计文档 §4 解析阶段状态类短语：否定句式本身即越界，不享否定豁免。"""
+    d = text(DESIGN)
+    assert STRICT_START in d and STRICT_END in d, "设计文档缺少 STRICT 短语标记对"
+    block = d.split(STRICT_START, 1)[1].split(STRICT_END, 1)[0]
+    m = re.search(r"```\s*\n(.*?)\n```", block, re.S)
+    assert m, "STRICT 短语必须放在 fenced code block 内"
     return [ln.strip() for ln in m.group(1).splitlines() if ln.strip()]
 
 
@@ -62,12 +75,17 @@ def strip_examples(doc):
 
 
 def find_violations(doc, phrases=None):
-    """返回 [(行号, 短语, 行内容)]；扫描前剥离反面示例，按行做否定语境豁免。"""
+    """返回 [(行号, 短语, 行内容)]；剥反面示例 → 判 STRICT → 按行否定豁免。"""
     phrases = phrases if phrases is not None else banned_phrases()
+    strict = strict_phrases()
     body = strip_examples(doc)
     hits = []
     for lineno, line in enumerate(body.splitlines(), 1):
         low = line.lower()
+        strict_hits = [p for p in strict if p.lower() in low]
+        if strict_hits:
+            hits.extend((lineno, p, line.strip()) for p in strict_hits)
+            continue
         if any(neg in low for neg in NEGATIONS):
             continue
         for phrase in phrases:
@@ -124,8 +142,14 @@ class TestBannedPhraseSource(unittest.TestCase):
     def test_design_declares_w5_w6_red_lines(self):
         d = text(DESIGN)
         for phrase in ("首句", "W4 口径", "不许说的话", "否定语境豁免",
-                       "反面示例", "单一真相来源"):
+                       "反面示例", "单一真相来源", "STRICT"):
             self.assertIn(phrase, d)
+
+    def test_strict_list_is_parseable_and_covers_old_w4_wording(self):
+        phrases = strict_phrases()
+        for sample in ("W4 未做", "W4 没做", "W4 not done", "not done"):
+            self.assertIn(sample, phrases)
+        self.assertEqual(len(phrases), len(set(phrases)), "STRICT 清单里有重复行")
 
     def test_every_external_doc_has_isolation_markers(self):
         for rel in EXTERNAL_DOCS:
@@ -159,6 +183,16 @@ class TestScannerIsReal(unittest.TestCase):
     def test_bullet_cross_mark_is_stripped(self):
         fake = "## 汇总\n\n- ❌ 这是生产级网关\n- ✅ 这是合成回放内的相对量\n"
         self.assertEqual(find_violations(fake, ["生产级网关"]), [])
+
+    def test_strict_phrase_is_caught_even_in_a_negated_line(self):
+        fake = "## 边界\n\nIt is not done and this is not a production-ready gateway.\n"
+        hits = find_violations(fake, ["production-ready gateway"])
+        self.assertTrue(any(p == "not done" for _, p, _ in hits))
+
+    def test_old_stage_wording_needs_the_strict_layer(self):
+        self.assertIn("W4 未做", strict_phrases())
+        self.assertNotIn("W4 未做", banned_phrases())
+        self.assertTrue(any(neg in "W4 未做".lower() for neg in NEGATIONS))
 
 
 class TestNoOverclaimInExternalDocs(unittest.TestCase):
@@ -227,7 +261,7 @@ class TestNumbersCarryBoundaries(unittest.TestCase):
         ("36.2%", ("描述性统计", "不外推真实模型", "最多兑现")),
         ("0.1185", ("不外推生产", "不宣称省钱", "合成回放", "固定价格表")),
         ("612", ("守门测试", "相当比例")),
-        ("157", ("skip", "隔离", "守门测试")),
+        ("248", ("skip", "隔离", "守门测试")),
         ("0.00", ("未被检验", "不是护栏", "判分", "H1")),
         ("1/N", ("分辨率", "与 k 无关")),
     )
@@ -274,6 +308,26 @@ class TestW4BoundaryWording(unittest.TestCase):
         fake = "## 结果\n\nW4 验证了网关收益，真实链路证明省钱。\n"
         hits = find_violations(fake, ["W4 验证了网关收益", "真实链路证明省钱"])
         self.assertEqual(len(hits), 2)
+
+    def test_no_external_doc_uses_pre_execution_stage_wording(self):
+        strict = strict_phrases()
+        for rel in EXTERNAL_DOCS:
+            with self.subTest(doc=rel):
+                hits = [(n, p) for n, p, _ in find_violations(text(rel)) if p in strict]
+                self.assertEqual(hits, [], f"{rel} 仍在用「W4 未做」类旧口径：{hits[:5]}")
+
+    def test_guard_would_catch_old_stage_wording_in_a_negated_line(self):
+        fake = "## 状态\n\nW4 未做，需要本人执行；It is not done.\n"
+        hits = [p for _, p, _ in find_violations(fake)]
+        self.assertIn("W4 未做", hits)
+        self.assertIn("not done", hits)
+
+    def test_trace_view_and_source_carry_the_new_boundary(self):
+        for rel in ("gateway/trace.py", "experiments/views/replay-aa1142308d8d.html"):
+            with self.subTest(doc=rel):
+                d = text(rel)
+                self.assertNotIn("W4 未做", d, f"{rel} 仍在用旧口径")
+                self.assertIn("已执行一次", d, f"{rel} 缺少新口径")
 
 
 class TestIndexContract(unittest.TestCase):

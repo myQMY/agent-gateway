@@ -173,8 +173,11 @@ the committed example view.
   view is a **read-only visualisation of an archive**, neither live tracing nor an
   observability platform; the timeline shows the first 48 rows per cell by default while
   statistics are computed over all 1200 rows.
-- W4 (direct connection to the P1 runtime) would produce only real-chain observable
-  events and real cost / latency, **no positive `pass^k` conclusion**. It is **not done**.
+- W4 (direct connection to the P1 runtime) has been **executed once** by the user on
+  2026-11-09 (two cells, real API cost incurred). It produced real-chain observable
+  events and real cost / latency only: **no positive `pass^k` conclusion, no verified
+  gateway benefit, and no cost-saving claim**. The two cells used different independent
+  variables, so their figures are not subtracted or joined into a trend line.
 
 <!-- FORBIDDEN-EXAMPLES-START -->
 Do not say (kept here so the contract test can strip it):
