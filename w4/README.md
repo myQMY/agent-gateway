@@ -17,8 +17,31 @@ PowerShell 的两个语法点：
   `"$PY" -m w4.run` 只是把路径当成字符串，`-m` 会被解析成意外标记。
   最省事的是根本不设变量，直接 `& "完整路径/python.exe" -m w4.run`。
 
-所有步骤的工作目录恒为 `D:/文档/课题/agent/agent-gateway`（`python -m w4.run`
-需要能在当前目录 import `w4` 包）。
+所有步骤的工作目录恒为 `D:/文档/课题/agent/agent-gateway`。
+`python -m` 只把**当前目录**放进 `sys.path`：解释器路径写得再对，
+只要终端停在 `C:\Users\CYY` 之类的别处，就会报
+`ModuleNotFoundError: No module named 'w4'`。新开的终端第一步先切过去：
+
+```powershell
+Set-Location "D:/文档/课题/agent/agent-gateway"
+```
+
+想少敲就把「切目录」和「执行」写在同一行（不依赖任何变量，任意目录都能跑）：
+
+```powershell
+Set-Location "D:/文档/课题/agent/agent-gateway"; & "C:/Users/CYY/.workbuddy/binaries/python/envs/agent-gateway/Scripts/python.exe" -m w4.run
+```
+
+> 下面三步里的相对路径（`w4/off.env` 等）都以此目录为基准；
+> 切过去之后保持这个终端，第 3 步的 `$env:LLM_API_KEY` 才能被子进程继承。
+
+### 三条最常见的报错
+
+| 报错 | 原因 | 处理 |
+| --- | --- | --- |
+| 无法将 `PY=...` 识别为 cmdlet / 意外的标记 `-m` | 贴了 bash 语法 | 用 PowerShell 写法，执行变量里的命令前加 `&` |
+| `ModuleNotFoundError: No module named 'w4'` | 当前目录不是仓库根 | 先 `Set-Location` 到仓库根，或用上面的一行版 |
+| `preflight 未通过，已中止` | `w4/*.env` 没复制，或 key 仍是占位符 | 回到第 1 步；此时零成本、未发起任何 API 调用 |
 
 ## 三步
 

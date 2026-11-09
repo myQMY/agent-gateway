@@ -395,6 +395,18 @@ class TestTerminalStepsAreRunnable(unittest.TestCase):
         self.assertNotIn("& $PY -m w4.run", old)
         self.assertNotIn("$env:LLM_API_KEY", old)
 
+    def test_readme_gives_explicit_working_directory_step(self):
+        """2026-11-09 第二次踩坑：终端停在 C:/Users/CYY 时 python -m 找不到 w4。"""
+        d = text("w4/README.md")
+        self.assertIn('Set-Location "D:/文档/课题/agent/agent-gateway"', d)
+        self.assertIn("No module named 'w4'", d)
+        self.assertIn("ModuleNotFoundError", d)
+
+    def test_cwd_step_is_a_prerequisite_not_a_footnote(self):
+        """自检：切目录的说明必须排在三步之前，不能又埋到文末。"""
+        d = text("w4/README.md")
+        self.assertLess(d.index("Set-Location"), d.index("## 三步"))
+
 
 if __name__ == "__main__":
     unittest.main()
