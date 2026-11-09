@@ -261,7 +261,7 @@ class TestNumbersCarryBoundaries(unittest.TestCase):
         ("36.2%", ("描述性统计", "不外推真实模型", "最多兑现")),
         ("0.1185", ("不外推生产", "不宣称省钱", "合成回放", "固定价格表")),
         ("612", ("守门测试", "相当比例")),
-        ("248", ("skip", "隔离", "守门测试")),
+        ("254", ("skip", "隔离", "守门测试")),
         ("0.00", ("未被检验", "不是护栏", "判分", "H1")),
         ("1/N", ("分辨率", "与 k 无关")),
     )
@@ -279,6 +279,12 @@ class TestNumbersCarryBoundaries(unittest.TestCase):
                             any(b in p for b in bounds),
                             f"{rel} 中「{number}」所在段落缺边界：{p[:100]}",
                         )
+        for rel in EXTERNAL_DOCS:
+            with self.subTest(doc=rel, check="stale test counts"):
+                d = text(rel)
+                for stale in ("157 unittest", "157 条 unittest", "612 / 157",
+                              "248 unittest", "248 条 unittest", "612 / 248"):
+                    self.assertNotIn(stale, d, f"{rel} 仍写过时测试数「{stale}」")
 
 
 class TestW4BoundaryWording(unittest.TestCase):
