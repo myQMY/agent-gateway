@@ -4,11 +4,34 @@
 > 设计依据 [docs/design-w4-tooling.md](../docs/design-w4-tooling.md)。
 > 真实密钥只由你本人填写，`w4/*.env` 已被 `.gitignore` 忽略，仓库里永不出现密钥。
 
+## 先选终端语法（2026-11-09 补）
+
+本机用 **Windows PowerShell**。`PY="..."` / `"$PY" -m ...` / `export LLM_API_KEY=...`
+都是 **bash** 写法，贴进 PowerShell 会报「无法将…识别为 cmdlet」或「表达式或语句中包含
+意外的标记 -m」。下面每一步都给 PowerShell 与 bash 两种写法，**只挑一种终端照抄**。
+
+PowerShell 的两个语法点：
+
+- 赋值是 `$PY = "路径"`（`$` 开头、等号两边可留空格），没有 `export`；
+- 执行变量里的命令必须加调用运算符 `&`：`& $PY -m w4.run`。
+  `"$PY" -m w4.run` 只是把路径当成字符串，`-m` 会被解析成意外标记。
+  最省事的是根本不设变量，直接 `& "完整路径/python.exe" -m w4.run`。
+
+所有步骤的工作目录恒为 `D:/文档/课题/agent/agent-gateway`（`python -m w4.run`
+需要能在当前目录 import `w4` 包）。
+
 ## 三步
 
 ### 1. 填密钥（唯一必须手工做的事）
 
-在 `D:/文档/课题/agent/agent-gateway` 根目录：
+PowerShell：
+
+```powershell
+Copy-Item w4/on.env.example  w4/on.env
+Copy-Item w4/off.env.example w4/off.env
+```
+
+bash：
 
 ```bash
 cp w4/on.env.example  w4/on.env
@@ -21,6 +44,21 @@ cp w4/off.env.example w4/off.env
 
 ### 2. 预览（零成本，建议先跑一次）
 
+PowerShell（两条一起贴，或只用第一行 + 第三行的完整路径写法）：
+
+```powershell
+$PY = "C:/Users/CYY/.workbuddy/binaries/python/envs/agent-gateway/Scripts/python.exe"
+& $PY -m w4.run
+```
+
+不设变量的最简写法：
+
+```powershell
+& "C:/Users/CYY/.workbuddy/binaries/python/envs/agent-gateway/Scripts/python.exe" -m w4.run
+```
+
+bash：
+
 ```bash
 PY="C:/Users/CYY/.workbuddy/binaries/python/envs/agent-gateway/Scripts/python.exe"
 "$PY" -m w4.run
@@ -32,10 +70,23 @@ preflight 全部通过再进第 3 步。`$PY` 必须是装了 `requirements.txt`
 
 ### 3. 执行（会产生真实成本）
 
+PowerShell：
+
+```powershell
+$env:LLM_API_KEY = "你的真实key"   # 网关进程读的是 os.environ，不是 env 文件
+& $PY -m w4.run --execute
+```
+
+bash：
+
 ```bash
-export LLM_API_KEY="你的真实key"   # 网关进程读的是这个，不是 env 文件
+export LLM_API_KEY="你的真实key"
 "$PY" -m w4.run --execute
 ```
+
+`$env:LLM_API_KEY` / `export` 只对**当前终端及其子进程**生效，必须在启动
+`w4.run` 的同一个终端里设置；`w4/run.py` 用 `os.environ.copy()` 把它传给网关子进程。
+关掉终端再开就要重设，但 `w4/off.env` 里的 key 不用再动。
 
 脚本自动完成：起 `w4.serve:app` → 用 `GET /w4/upstream` 做零成本自检
 （确认不是 `fake` 上游、密钥确实注入）→ 依次跑 `off` / `on` 两格 → 关闭网关。
@@ -45,6 +96,17 @@ export LLM_API_KEY="你的真实key"   # 网关进程读的是这个，不是 en
 
 只想跑一格做调试：`--cell off`（直连，不需要网关）或 `--cell on`（经网关）。
 想额外花一次调用确认返回的不是 `fake:` 文本：
+
+PowerShell（第二个终端用 `Invoke-RestMethod`；PowerShell 5.1 里 `curl` 是
+`Invoke-WebRequest` 的别名，参数完全不同，要用得写 `curl.exe`）：
+
+```powershell
+& $PY -m w4.run --serve-only
+# 另开终端（这一句会产生一次真实调用）
+Invoke-RestMethod -Uri http://127.0.0.1:8000/v1/chat/completions -Method Post -ContentType "application/json" -Body '{"model":"deepseek-flash","messages":[{"role":"user","content":"reply OK"}]}'
+```
+
+bash：
 
 ```bash
 "$PY" -m w4.run --serve-only
@@ -64,6 +126,10 @@ curl -s http://127.0.0.1:8000/v1/chat/completions \
 - 网关 `/metrics`：真实请求流下的 `requests` / `cache_hits` / `rate_limited` /
   `idempotent_blocked` 等决策事件。
 - 跑完检查 `git -C "D:/文档/课题/agent/项目1" status --short` 为空，并删除 `w4/off.env`。
+
+> 注意：`w4/on.env` / `w4/off.env` 是你本地的工作文件，被 `.gitignore` 排除。
+> 按本清单填好之后，全量测试应当仍然全绿；若某条守门测试因这两个文件存在而失败，
+> 那是测试把「合法本地文件」误判成「已入库密钥」，属于脚手架缺陷。
 
 ## 必须连边界一起讲
 

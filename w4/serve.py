@@ -12,7 +12,8 @@ upstream，RealUpstreamConfig.from_env() 的 GATEWAY_REAL_UPSTREAM 开关在生�
 
 启动（真实密钥只放在进程环境变量里，不落盘、不入库）：
 
-    export LLM_API_KEY="你的真实key"
+    PowerShell:  $env:LLM_API_KEY="你的真实key"
+    bash:        export LLM_API_KEY="你的真实key"
     uvicorn w4.serve:app --port 8000
 
 GET /w4/upstream 只返回上游类型与「密钥是否存在」的布尔值，不返回密钥值，

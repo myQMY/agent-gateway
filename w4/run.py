@@ -143,7 +143,8 @@ def wait_gateway(proc: subprocess.Popen, timeout_s: float = 20.0) -> dict:
                 raise RuntimeError(f"上游类型不是 real：{info.get('kind')!r}")
             if not info.get("api_key_present"):
                 raise RuntimeError(
-                    "网关进程没读到 LLM_API_KEY；请在启动本脚本的同一个终端 export 真实密钥。"
+                    "网关进程没读到 LLM_API_KEY；请在启动本脚本的同一个终端设置环境变量："
+                    "PowerShell 用 $env:LLM_API_KEY=\"真实key\"，bash 用 export LLM_API_KEY=真实key。"
                 )
             return info
         time.sleep(0.2)
@@ -205,8 +206,14 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.serve_only:
         print("仅启动网关。另开终端做一次连通性自检（会产生一次真实调用）：")
-        print(f'  curl -s {GATEWAY}/v1/chat/completions -H "Content-Type: application/json" '
-              '-d \'{"model":"deepseek-flash","messages":[{"role":"user","content":"只回复 OK"}]}\'')
+        url = f"{GATEWAY}/v1/chat/completions"
+        body = ('{"model":"deepseek-flash","messages":'
+                '[{"role":"user","content":"reply OK"}]}')
+        print("  PowerShell（5.1 里 curl 是 Invoke-WebRequest 的别名，别直接写 curl）：")
+        print(f'    Invoke-RestMethod -Uri {url} -Method Post '
+              f'-ContentType "application/json" -Body \'{body}\'')
+        print("  bash：")
+        print(f'    curl -s {url} -H "Content-Type: application/json" -d \'{body}\'')
         print("Ctrl+C 结束。")
 
     print(

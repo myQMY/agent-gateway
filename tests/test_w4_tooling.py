@@ -13,18 +13,43 @@
 """
 
 from contextlib import redirect_stdout
+import fnmatch
 import io
 import re
 from pathlib import Path
+import subprocess
+from shutil import which
 import unittest
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 SECRET_RE = re.compile(r"sk-[A-Za-z0-9]{16,}")
+# 用户按 w4/README.md 复制出来的本地工作文件；被 .gitignore 排除，允许存在。
+REAL_ENV = ("w4/on.env", "w4/off.env")
 
 
 def text(rel):
     return (ROOT / rel).read_text(encoding="utf-8")
+
+
+def tracked_real_env(git_stdout):
+    """从 `git ls-files` 输出里挑出被跟踪的真实 env 文件。"""
+    return [ln.strip() for ln in git_stdout.splitlines()
+            if ln.strip() in REAL_ENV]
+
+
+def git_ls_real_env():
+    """PATH 里没有 git 时返回 None，由 .gitignore 规则自检兜底。"""
+    git = which("git")
+    if git is None:
+        return None
+    try:
+        return subprocess.run(
+            [git, "-C", str(ROOT), "ls-files", *REAL_ENV],
+            capture_output=True, text=True, check=False,
+        ).stdout
+    except OSError:
+        return None
 
 
 def module_level_app_args(src):
@@ -110,17 +135,50 @@ class TestEnvTemplatesHaveNoSecrets(unittest.TestCase):
         self.assertIn("w4/*.env", d)
         self.assertIn("w4/out/", d)
 
-    def test_no_checked_in_real_env_files(self):
-        for name in ("on.env", "off.env"):
-            with self.subTest(name=name):
-                self.assertFalse((ROOT / "w4" / name).exists(),
-                                 f"w4/{name} 含真实密钥，绝不能入库")
+    def test_real_env_files_may_exist_but_are_never_tracked(self):
+        """用户按 README 填好 env 是合法状态；守门只保证它没进 git 索引。
 
-    def test_no_secret_like_string_in_any_w4_file(self):
+        旧版用 `assertFalse(path.exists())`，用户一旦照文档做完第 1 步就必然挂，
+        守门与可用步骤互斥。改为校验忽略规则 + git 跟踪状态。
+        """
+        rules = [ln.strip() for ln in text(".gitignore").splitlines()
+                 if ln.strip() and not ln.lstrip().startswith("#")]
+        for rel in REAL_ENV:
+            with self.subTest(file=rel):
+                self.assertTrue(
+                    any(fnmatch.fnmatch(rel, r.lstrip("/")) for r in rules),
+                    f"{rel} 未被 .gitignore 覆盖")
+        out = git_ls_real_env()
+        if out is not None:
+            self.assertEqual(tracked_real_env(out), [],
+                             "含真实密钥的 env 文件被 git 跟踪了")
+
+    def test_guard_would_catch_a_tracked_env_file(self):
+        """自检：真把 off.env 提交进仓库时，上面的守门确实会拦下。"""
+        self.assertEqual(tracked_real_env("w4/off.env\n"), ["w4/off.env"])
+        self.assertEqual(tracked_real_env("w4/off.env.example\n"), [])
+
+    def test_no_secret_like_string_in_any_committable_w4_file(self):
+        """只扫会被提交的文件；本地 env 与 out/ 产物被 .gitignore 排除。
+
+        必须用 assertFalse(bool(...))：assertIsNone 的失败信息会带上 match 对象，
+        把用户填的真实密钥直接打进测试日志 —— 守门反而成了泄漏点。
+        """
         for p in sorted((ROOT / "w4").rglob("*")):
-            if p.is_file():
-                with self.subTest(file=p.name):
-                    self.assertIsNone(SECRET_RE.search(p.read_text(encoding="utf-8")), p.name)
+            if not p.is_file():
+                continue
+            rel = p.relative_to(ROOT).as_posix()
+            if rel.startswith("w4/out/") or (rel.startswith("w4/") and rel.endswith(".env")):
+                continue
+            with self.subTest(file=rel):
+                self.assertFalse(
+                    bool(SECRET_RE.search(p.read_text(encoding="utf-8"))),
+                    f"{rel} 含疑似密钥（守门不打印命中内容，避免二次泄漏）")
+
+    def test_secret_scanner_would_catch_a_leaked_key(self):
+        """自检：扫描器没有因为跳过本地 env 而整体失效。"""
+        sample = "LLM_API_KEY=" + "sk-" + "a" * 32
+        self.assertTrue(bool(SECRET_RE.search(sample)))
 
 
 class TestTwoCellConfigs(unittest.TestCase):
@@ -305,6 +363,37 @@ class TestStageTablesAndFrozenContracts(unittest.TestCase):
         self.assertIn("from .upstream import Upstream", src)
         self.assertNotIn("from .real_upstream import", src)
         self.assertIn("app = create_app()", src)
+
+
+class TestTerminalStepsAreRunnable(unittest.TestCase):
+    """2026-11-09：文档曾全用 bash 语法，Windows PowerShell 用户第一步就跑不通。"""
+
+    def test_readme_gives_powershell_syntax_for_all_three_steps(self):
+        d = text("w4/README.md")
+        for snippet in ("Copy-Item w4/on.env.example", "$PY = ",
+                        "& $PY -m w4.run", "$env:LLM_API_KEY",
+                        "& $PY -m w4.run --execute", "Invoke-RestMethod"):
+            with self.subTest(snippet=snippet):
+                self.assertIn(snippet, d)
+
+    def test_readme_explains_why_bash_variable_fails(self):
+        d = text("w4/README.md")
+        self.assertIn("调用运算符", d)
+        self.assertIn("意外的标记", d)
+
+    def test_bridge_readme_gives_powershell_env_syntax(self):
+        self.assertIn("$env:LLM_API_KEY", text("bridge/README.md"))
+
+    def test_runtime_hints_are_not_bash_only(self):
+        src = text("w4/run.py") + text("w4/serve.py")
+        self.assertIn("$env:LLM_API_KEY", src)
+        self.assertIn("Invoke-RestMethod", src)
+
+    def test_powershell_guard_would_catch_regression(self):
+        """自检：把清单换回纯 bash 版本，上面的断言确实会失败。"""
+        old = 'PY="/path/to/python"\n"$PY" -m w4.run\nexport LLM_API_KEY=key\n'
+        self.assertNotIn("& $PY -m w4.run", old)
+        self.assertNotIn("$env:LLM_API_KEY", old)
 
 
 if __name__ == "__main__":

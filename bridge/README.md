@@ -52,7 +52,8 @@ python -m bridge.p1_replay --tasks "D:/文档/课题/agent/项目1/tasks/mvp_10.
    **只在 `w4/off.env` 里填真实密钥**；`on.env` 的 `LLM_API_KEY=placeholder` 是刻意占位。
 2. `python -m w4.run` —— 零成本预览：只打印两格命令 + preflight，
    不启动服务、不建目录、不发起任何 API 调用。
-3. `export LLM_API_KEY=<真实key>` 后 `python -m w4.run --execute` ——
+3. 在**同一个终端**设置 `LLM_API_KEY` 后 `python -m w4.run --execute`
+   （PowerShell 用 `$env:LLM_API_KEY="真实key"`，bash 用 `export LLM_API_KEY=真实key`）——
    自动起停 `w4.serve:app`、用 `GET /w4/upstream` 做零成本自检
    （拦住「起成 fake 上游」），依次跑 off / on 两格，产物全部落在 `w4/out/`。
 
