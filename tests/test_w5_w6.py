@@ -15,7 +15,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
 DESIGN = "docs/design-w5-w6.md"
-EXTERNAL_DOCS = ("README.en.md", "docs/resume.md", "docs/interview.md")
+EXTERNAL_DOCS = ("README.md", "README.en.md", "docs/resume.md", "docs/interview.md")
 
 BANNED_START = "<!-- BANNED-PHRASES-START -->"
 BANNED_END = "<!-- BANNED-PHRASES-END -->"
@@ -127,6 +127,18 @@ def paragraphs(doc):
     return [p for p in parts if not p.startswith("#")]
 
 
+def volatile_repo_metadata(doc):
+    """返回 [(行号, 行内容)]：对外文档里不带时间锚点的 commits / tracked 精确数。
+
+    design-w5-w6.md §3：这类仓库元数据每提交一次就变，写进对外文档必然过时。
+    唯一的例外是已收口的 P1 快照，必须同段带「收口时 / 截至 / 交付时」锚点。
+    """
+    pattern = re.compile(r"\b\d+\s*(?:commits|tracked)\b")
+    anchors = ("收口时", "截至", "交付时")
+    return [(n, ln.strip()) for n, ln in enumerate(doc.splitlines(), 1)
+            if pattern.search(ln) and not any(a in ln for a in anchors)]
+
+
 class TestBannedPhraseSource(unittest.TestCase):
     """禁用清单本身必须可解析、双语覆盖、无重复。"""
 
@@ -142,7 +154,7 @@ class TestBannedPhraseSource(unittest.TestCase):
     def test_design_declares_w5_w6_red_lines(self):
         d = text(DESIGN)
         for phrase in ("首句", "W4 口径", "不许说的话", "否定语境豁免",
-                       "反面示例", "单一真相来源", "STRICT"):
+                       "反面示例", "单一真相来源", "STRICT", "仓库元数据"):
             self.assertIn(phrase, d)
 
     def test_strict_list_is_parseable_and_covers_old_w4_wording(self):
@@ -285,13 +297,23 @@ class TestNumbersCarryBoundaries(unittest.TestCase):
                 for stale in ("157 unittest", "157 条 unittest", "612 / 157",
                               "248 unittest", "248 条 unittest", "612 / 248"):
                     self.assertNotIn(stale, d, f"{rel} 仍写过时测试数「{stale}」")
+        for rel in EXTERNAL_DOCS:
+            with self.subTest(doc=rel, check="volatile repo metadata"):
+                self.assertEqual(
+                    volatile_repo_metadata(text(rel)), [],
+                    f"{rel} 仍写会随提交漂移的裸仓库元数据",
+                )
+        # 自检：规则确实拦得住裸数字，也确实放行带收口日期的历史快照
+        self.assertEqual(len(volatile_repo_metadata("12 commits")), 1)
+        self.assertEqual(volatile_repo_metadata("23 commits（2026-11-06 收口时）"), [])
 
 
 class TestW4BoundaryWording(unittest.TestCase):
     """两格真实链路回放已执行一次；所有文档必须带「未产收益结论」的边界。"""
 
     def test_all_external_docs_carry_the_new_boundary(self):
-        for rel, marker in (("README.en.md", "Executed once"),
+        for rel, marker in (("README.md", "已执行一次"),
+                            ("README.en.md", "Executed once"),
                             ("docs/resume.md", "已执行一次"),
                             ("docs/interview.md", "已执行一次")):
             with self.subTest(doc=rel):

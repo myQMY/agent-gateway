@@ -101,7 +101,7 @@ docker compose --profile verify run --rm verify
 归档到 `experiments/runs/replay-<config_hash>/` 三件
 （`report.md` / `config.json` / `decisions.jsonl`）。缓存命中、幂等重放、
 限流拒绝、降级触发四类事件各自被计数，并给出相对成本差。
-**这只证明「四条决策链路确实在跑且各自可测」，不证明上线后能省钱。**
+**这只证明「四条决策链路确实在跑且各自可测」，不外推生产、不宣称省钱。**
 
 `python -m gateway.bench` 只验证并发不变量，不测性能：
 32 个并发同幂等键请求 → 上游**恰好调用 1 次**、台账 32 条不丢；
@@ -174,3 +174,11 @@ docker compose --profile verify run --rm verify
 每阶段一个 commit、可随时停，不自动扩张。W5–W6 是纯文档收尾、零行为代码变更，
 所有对外表述受 `docs/design-w5-w6.md` 的禁用短语清单约束。许可证：MIT。
 W4 已执行一次但未产收益结论，对外不得写成「W4 已完成」或「已验证网关收益」。
+
+<!-- FORBIDDEN-EXAMPLES-START -->
+**不许说的话（反面示例，不参与守门扫描）**
+
+- ❌「生产可用的 LLM 网关 / 已容器化部署 / K8s 就绪 / Docker 已实跑」
+- ❌「W4 已完成、验证了网关收益、真实链路证明省钱、上线后能省钱」
+- ❌「成本下降 XX%」「p95 = XX ms」「压测 QPS」不带合成回放 / 模拟延迟 / 并发不变量限定
+<!-- FORBIDDEN-EXAMPLES-END -->
