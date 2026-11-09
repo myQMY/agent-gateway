@@ -497,6 +497,36 @@ class TestW4FailureDiagnosis(unittest.TestCase):
                "app = create_app(upstream=UPSTREAM, concurrent=False)\n")
         self.assertNotIn("error_kind", old)
 
+    def test_readme_no_stale_manual_env_requirement(self):
+        """旧清单那句「保持终端才能继承 env」会让人又把 key 填两处。"""
+        self.assertNotIn("才能被子进程继承", text("w4/README.md"))
+
+    def test_readme_documents_stale_env_cleanup(self):
+        d = text("w4/README.md")
+        self.assertIn("Remove-Item Env:LLM_API_KEY", d)
+        self.assertIn("-eq $env:LLM_API_KEY", d)
+        self.assertIn("False", d)
+
+    def test_readme_explains_on_env_placeholder_is_intentional(self):
+        """防止后来者看到两份 key 不一致就把真 key 也填进 on.env。"""
+        d = text("w4/README.md")
+        self.assertIn("LLM_API_KEY=placeholder", d)
+        self.assertIn("不要改 `w4/on.env`", d)
+        self.assertIn("不校验", d)
+        self.assertIn("os.environ", d)
+
+    def test_readme_records_partial_execution_and_real_cost(self):
+        """口径：已经跑过一次，不能再写「零成本 / 未执行」。"""
+        d = text("w4/README.md")
+        self.assertIn("部分执行", d)
+        self.assertIn("已经产生真实 API 成本", d)
+
+    def test_stale_doc_guard_would_catch_regression(self):
+        """自检：换回旧版片段，上面的守门确实会失败。"""
+        old = "切过去之后保持这个终端，第 3 步的 $env:LLM_API_KEY 才能被子进程继承。"
+        self.assertIn("才能被子进程继承", old)
+        self.assertNotIn("Remove-Item Env:LLM_API_KEY", old)
+
 
 if __name__ == "__main__":
     unittest.main()

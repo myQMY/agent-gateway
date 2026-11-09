@@ -1,7 +1,9 @@
 # W4 执行清单（用户本人操作）
 
 > **本目录是脚手架，不是 W4 本身**：完整的两格对照结论依旧未做，阶段表与外部文档仍标「未做」。
-> 脚手架本身零成本；只有你亲自跑 `--execute` 才会调用真实供应商并产生账单。
+> 2026-11-09 已发生过一次**部分执行**：off 格完整完成（30 trial），on 格首个请求报 502。
+> **已经产生真实 API 成本**，对外不再写「零成本 / 未执行」；但两格对照结论仍未产出。
+> 脚手架本身不花钱；只有 `--execute` 才会调用真实供应商并产生账单。
 > 设计依据 [docs/design-w4-tooling.md](../docs/design-w4-tooling.md)。
 > 真实密钥只由你本人填写，`w4/*.env` 已被 `.gitignore` 忽略，仓库里永不出现密钥。
 
@@ -34,7 +36,8 @@ Set-Location "D:/文档/课题/agent/agent-gateway"; & "C:/Users/CYY/.workbuddy/
 ```
 
 > 下面三步里的相对路径（`w4/off.env` 等）都以此目录为基准；
-> 切过去之后保持这个终端，第 3 步的 `$env:LLM_API_KEY` 才能被子进程继承。
+> 切过去之后保持这个终端，`$PY` 变量才还在。密钥由 `w4/off.env` **单一提供**，
+> 不依赖终端里的 `$env:LLM_API_KEY`（旧清单要求手设，已废弃，见「若 on 格报 502」）。
 
 ### 三条最常见的报错
 
@@ -137,6 +140,29 @@ bash：
 | `timeout` | 30s 超时或网络不可达 | 检查网络 / 代理后重试 |
 | `invalid_response` | 上游响应解析失败 | 核对模型名与服务商协议 |
 
+**实测排错（2026-11-09 首次执行）**：那次 502 的根因是旧清单要求把 key 填两处
+（`w4/off.env` 与终端 `$env:LLM_API_KEY`），两处不一致 → 上游 401 → `GatewayEngine`
+统一映射成 502。零成本确认（只输出 True/False，不打印密钥）：
+
+```powershell
+$line = Get-Content w4/off.env | Where-Object { $_ -match '^\s*LLM_API_KEY\s*=' } | Select-Object -First 1
+($line -split '=',2)[1].Trim() -eq $env:LLM_API_KEY
+```
+
+`False` 即坐实该根因。`w4/run.py` 现在**强制只从 `w4/off.env` 取 key** 注入网关子进程
+（守门测试覆盖「终端里另有一份值时仍以文件为准」），所以重跑前把旧变量清掉即可，
+不必再手设：
+
+```powershell
+Remove-Item Env:LLM_API_KEY -ErrorAction SilentlyContinue
+```
+
+> ⚠️ **不要改 `w4/on.env`**：它的 `LLM_API_KEY=placeholder` 是刻意占位，与
+> `w4/off.env` 里的真 key **不同属于设计如此**，不是故障。网关不校验客户端
+> `Authorization` 头，`RealUpstream` 只读自己进程的 `os.environ["LLM_API_KEY"]`；
+> 把真 key 填进 on.env 只会多一个泄漏面。`/w4/upstream` 的 `api_key_present`
+> 只验「非空」，验不出两份值是否一致。
+
 **只重跑失败的那一格，别重跑已成功的一格**（off 的产物保留在 `w4/out/runs-off/`）：
 
 ```powershell
@@ -197,4 +223,5 @@ curl -s http://127.0.0.1:8000/v1/chat/completions \
 - 不改 P1 判分器、`mvp_10/mvp_30.jsonl`、任何归档与既有 `run_id`；
 - 不为了跑通而改 P1 代码，协议对不上只改本仓库适配器；
 - 不用 `python -m eval.w4_preflight`——它硬编码的是 P1 内部 `w4_*_flash.toml`；
-- 仓库、简历、面试文档里 **W4 依旧标「未做」**，直到你本人真正执行完。
+- 仓库、简历、面试文档里 **W4 依旧标「未做」**，直到完整两格都跑完；
+  已发生的部分执行与真实成本如实讲，不写成「已验证网关收益」。
