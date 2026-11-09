@@ -107,6 +107,10 @@ W3 与 W4 数字拼成曲线
 K8s 就绪
 Docker 已实跑
 W4 已完成
+W4 产出了正向 pass^k 结论
+W4 验证了网关收益
+在真实模型上验证了网关收益
+真实链路证明省钱
 显著提升真实成本
 兼容全部 OpenAI 参数
 把命中率说成优化成果
@@ -118,6 +122,10 @@ real p95 latency
 benchmarked QPS
 deployed with Kubernetes
 W4 completed
+W4 produced a positive pass^k result
+verified gateway benefit on real models
+W4 proved cost savings
+positive pass^k from W4
 ```
 <!-- BANNED-PHRASES-END -->
 
@@ -150,8 +158,9 @@ W4 completed
   Key results / Boundaries / Evidence index / Stages，章节数与中文版对齐；
 - 术语固定：`deterministic fake upstream`、`simulated latency`、`concurrency invariants`、
   `serial off/on baseline`、`byte-for-byte reproducible`、`optional container replay`、
-  `read-only trace view`、`W4 (not done)`；
-- 明确写出 Docker 未实跑、真实供应商默认关闭、W4 未做，与中文版口径逐条对应。
+  `read-only trace view`、`W4 Executed once, no benefit claim`；
+- 明确写出 Docker 未实跑、真实供应商默认关闭、W4 两格已执行一次但未产收益结论，
+  与中文版口径逐条对应；**W4 口径**由此处的禁用短语清单与守门测试共同钉死。
 
 **`docs/resume.md`**：
 
@@ -181,11 +190,12 @@ W4 completed
 | `README.en.md` | 新增 |
 | `docs/resume.md` | 新增 |
 | `docs/interview.md` | 新增 |
-| `tests/test_w5_w6.py` | 新增，23 条守门测试（禁用短语扫描 / 扫描器自检 / 首句定位 / 中英对齐 / 数字边界 / W4 未做 / 索引与阶段表 / 归档不变） |
+| `tests/test_w5_w6.py` | 新增，守门测试（禁用短语扫描 / 扫描器自检 / 首句定位 / 中英对齐 / 数字边界 / W4 口径 / 索引与阶段表 / 归档不变） |
 | `docs/design.md` / `README.md` | 阶段表与索引更新 |
 
 索引与阶段表断言集中在 `tests/test_w5_w6.py::TestIndexContract`，
-`tests/test_project_contract.py` 本轮**一行不改**（W1–W3 的守门断言原样保留）。
+`tests/test_project_contract.py` 在 W5–W6 那轮**一行不改**（W1–W3 的守门断言原样保留）；
+2026-11-09 更新 W4 口径时只改了其中「未做」计数那一条，W1–W3 断言仍不动。
 
 `gateway/` **零改动**；`GatewayConfig` 零字段新增；`config_hash` 与两组 W1 归档三件逐字节不变；
 P1 仓库零改动；公开状态、remote、W4 全部不碰（用户明确要求等全部做完再统一处理）。
@@ -202,4 +212,4 @@ P1 仓库零改动；公开状态、remote、W4 全部不碰（用户明确要�
 
 - ✅「这是一套评测装置 / 运行时平台，非面向用户的 Agent 应用；两个项目共用
   『配置即自变量 + 单变量对照 + 逐字节可复现』的方法论，但仓库与 commit 历史独立」
-- ✅「所有数字都带边界；W4 未做、Docker 未实跑、真实供应商默认关闭，缺口如实讲」
+- ✅「所有数字都带边界；W4 两格已执行一次但未产收益结论、Docker 未实跑、真实供应商默认关闭，缺口如实讲」

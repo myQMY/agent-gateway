@@ -19,8 +19,10 @@ import re
 from pathlib import Path
 import subprocess
 from shutil import which
+import tempfile
 import unittest
 from unittest import mock
+from urllib.error import URLError
 
 ROOT = Path(__file__).resolve().parent.parent
 SECRET_RE = re.compile(r"sk-[A-Za-z0-9]{16,}")
@@ -334,19 +336,28 @@ class TestBridgeReadmeCorrections(unittest.TestCase):
 
 
 class TestStageTablesAndFrozenContracts(unittest.TestCase):
-    """§5 / §6：W4 依旧标未做；确定性契约不变。"""
+    """§5 / §6：W4 两格已执行一次但未产结论；确定性契约不变。"""
 
-    def test_w4_still_marked_pending_in_stage_tables(self):
+    def test_w4_stage_table_carries_executed_without_conclusion(self):
         for rel in ("README.md", "docs/design.md"):
             with self.subTest(doc=rel):
                 row = [ln for ln in text(rel).splitlines() if ln.startswith("| W4")]
                 self.assertEqual(len(row), 1, f"{rel} 的 W4 阶段行缺失或重复")
-                self.assertIn("未做", row[0])
+                self.assertIn("已执行一次", row[0])
+                self.assertIn("未产结论", row[0])
 
-    def test_w4_docs_never_claim_it_was_done(self):
+    def test_w4_docs_carry_the_same_boundary(self):
         for rel in ("w4/README.md", "docs/design-w4-tooling.md", "w4/__init__.py"):
             with self.subTest(doc=rel):
-                self.assertIn("未做", text(rel))
+                d = text(rel)
+                self.assertIn("已执行一次", d)
+                self.assertIn("未产", d)
+
+    def test_guard_would_catch_stale_pending_wording(self):
+        """自检：把阶段表换回「未做」，上面的守门确实会失败。"""
+        old = "| W4 | 挂 P1 harness 直连跑对照 | 未做 |"
+        self.assertNotIn("已执行一次", old)
+        self.assertNotIn("未产结论", old)
 
     def test_new_docs_are_indexed(self):
         r = text("README.md")
@@ -526,6 +537,100 @@ class TestW4FailureDiagnosis(unittest.TestCase):
         old = "切过去之后保持这个终端，第 3 步的 $env:LLM_API_KEY 才能被子进程继承。"
         self.assertIn("才能被子进程继承", old)
         self.assertNotIn("Remove-Item Env:LLM_API_KEY", old)
+
+
+class TestGatewayMetricsSnapshot(unittest.TestCase):
+    """2026-11-09 两格跑完暴露：脚本自动关网关，/metrics 内存计数没留档。"""
+
+    @staticmethod
+    def _fake_urlopen(payload=b'{"requests": 3, "cache_hits": 1}'):
+        response = mock.MagicMock()
+        response.read.return_value = payload
+        opener = mock.MagicMock()
+        opener.return_value.__enter__.return_value = response
+        return opener
+
+    def test_capture_writes_local_snapshot_without_secrets(self):
+        from w4 import run as w4run
+        with tempfile.TemporaryDirectory() as td, \
+             mock.patch.object(w4run, "OUT", Path(td) / "out"), \
+             mock.patch.object(w4run, "urlopen", self._fake_urlopen()) as op:
+            with redirect_stdout(io.StringIO()):
+                w4run.capture_metrics("on")
+            p = Path(td) / "out" / "metrics-on.json"
+            self.assertTrue(p.is_file())
+            body = p.read_text(encoding="utf-8")
+            self.assertIn('"gateway_metrics"', body)
+            self.assertIn('"requests": 3', body)
+            for secret in ("api_key", "LLM_API_KEY", "Authorization", "messages"):
+                self.assertNotIn(secret, body)
+            self.assertEqual(op.call_args.args[0], w4run.GATEWAY + "/metrics")
+
+    def test_capture_never_touches_chat_completions(self):
+        block = text("w4/run.py").split("def capture_metrics", 1)[1].split("def run_cell", 1)[0]
+        self.assertNotIn("chat/completions", block)
+        self.assertIn('GATEWAY + "/metrics"', block)
+        self.assertNotIn("os.environ", block)
+
+    def test_capture_degrades_gracefully_on_http_failure(self):
+        from w4 import run as w4run
+        with tempfile.TemporaryDirectory() as td, \
+             mock.patch.object(w4run, "OUT", Path(td) / "out"), \
+             mock.patch.object(w4run, "urlopen", side_effect=URLError("down")):
+            with redirect_stdout(io.StringIO()) as buf:
+                w4run.capture_metrics("on")  # 不抛异常、不掩盖原始失败
+            self.assertFalse((Path(td) / "out" / "metrics-on.json").exists())
+            self.assertIn("未留档", buf.getvalue())
+
+    def test_finally_captures_before_stopping_gateway(self):
+        """顺序是硬约束：进程一终止就再也取不到内存计数。"""
+        from w4 import run as w4run
+        tail = text("w4/run.py").split("finally:", 1)[1]
+        self.assertLess(tail.index("capture_metrics(c)"), tail.index("stop_gateway(proc)"))
+        with tempfile.TemporaryDirectory() as td, \
+             mock.patch.object(w4run, "OUT", Path(td) / "out"), \
+             mock.patch.object(w4run, "start_gateway"), \
+             mock.patch.object(w4run, "wait_gateway",
+                               return_value={"kind": "real", "base_url": "x", "path": "y"}), \
+             mock.patch.object(w4run.subprocess, "run",
+                               return_value=mock.Mock(returncode=0)), \
+             mock.patch.object(w4run, "capture_metrics") as cap, \
+             mock.patch.object(w4run, "stop_gateway") as stop, \
+             redirect_stdout(io.StringIO()):
+            self.assertEqual(w4run.main(["--cell", "on", "--execute"]), 0)
+        self.assertTrue(cap.called)
+        self.assertTrue(stop.called)
+
+    def test_dry_run_never_captures_or_calls_http(self):
+        from w4 import run as w4run
+        with mock.patch.object(w4run, "capture_metrics") as cap, \
+             mock.patch.object(w4run, "urlopen") as op, \
+             redirect_stdout(io.StringIO()):
+            self.assertEqual(w4run.main(["--cell", "on"]), 0)
+        self.assertFalse(cap.called)
+        self.assertFalse(op.called)
+
+    def test_preflight_failure_never_captures(self):
+        from w4 import run as w4run
+        with mock.patch.object(w4run, "preflight", return_value=["mock: 缺少 off.env"]), \
+             mock.patch.object(w4run, "capture_metrics") as cap, \
+             mock.patch.object(w4run, "start_gateway") as sg, \
+             redirect_stdout(io.StringIO()):
+            self.assertEqual(w4run.main(["--cell", "on", "--execute"]), 2)
+        self.assertFalse(cap.called)
+        self.assertFalse(sg.called)
+
+    def test_readme_states_that_first_run_has_no_metrics_snapshot(self):
+        """本轮数据找不回，文档不能假装已经采集。"""
+        d = text("w4/README.md")
+        self.assertIn("metrics-on.json", d)
+        self.assertIn("未留档", d)
+        self.assertIn("2026-11-09 那次", d)
+
+    def test_guard_would_catch_regression_to_bare_stop(self):
+        """自检：把 finally 换回只有 stop_gateway，上面的顺序守门会失败。"""
+        old = "finally:\n        stop_gateway(proc)\n"
+        self.assertNotIn("capture_metrics", old)
 
 
 if __name__ == "__main__":

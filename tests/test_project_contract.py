@@ -30,13 +30,14 @@ class TestDesignRedLines(unittest.TestCase):
 
     def test_design_forbids_overclaiming(self):
         d = text("docs/design.md")
-        for phrase in ("不是生产级网关", "确定性模拟值", "不许说的话", "未做"):
+        for phrase in ("不是生产级网关", "确定性模拟值", "不许说的话", "未产出收益结论"):
             self.assertIn(phrase, d)
 
-    def test_design_marks_later_stages_as_not_done(self):
+    def test_design_marks_w4_as_executed_without_conclusion(self):
         d = text("docs/design.md")
         self.assertIn("本轮交付", d)
-        self.assertGreaterEqual(d.count("未做"), 3)
+        self.assertIn("已执行一次", d)
+        self.assertIn("未产出收益结论", d)
 
 
 class TestZeroDependencyCore(unittest.TestCase):

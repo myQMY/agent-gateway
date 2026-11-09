@@ -138,9 +138,12 @@ docker compose --profile verify run --rm verify
 - loadgen 是**并发不变量自检，不是性能基准**；不产 QPS / p95 / 墙钟，不写归档行，
   不与 W1 数字相减。trace 视图是归档的**只读可视化**，不是实时链路追踪 / 可观测平台；
   时间线默认每格展示前 48 条，统计基于全量 1200 行。
-- W4（挂 P1 运行时直连）只产真实链路可观测事件与成本/延迟，**不产 `pass^k` 正向结论**。
-  `w4/` 已备好启动入口、两格配置与编排脚本，但**实验仍未做**：需用户本人填密钥并执行，
-  本仓库不代跑、不代填密钥；网关 `total_cost_usd` 不是账单，两格数字不相减、不拼曲线。
+- W4（挂 P1 运行时直连）两格真实链路回放**已执行一次**（2026-11-09，用户本人，产生
+  真实 API 成本）：off 直连 / on 经网关各 30 trial、run_id 不同，只产真实链路可观测
+  事件与 P1 侧 token / 端到端延迟，**未产出 `pass^k` 正向结论、未验证网关收益**。
+  两格 `pass^k` 均 0.00 是判分器收口红线的预期结果；两格自变量不同，不相减、
+  不拼曲线、不宣称省钱。本仓库不代跑、不代填密钥；网关 `total_cost_usd` 不是账单；
+  首次执行的网关 `/metrics` 决策计数未留档（脚手架缺陷，已修）。
 
 ## 证据索引
 
@@ -149,14 +152,14 @@ docker compose --profile verify run --rm verify
 - `docs/design-w3.md` — W3 三条边界、并发窗口实测修正、容器未实跑说明
 - `docs/design-w5-w6.md` — W5–W6 叙事红线、机器可读禁用短语清单、反面示例隔离约定
 - `docs/design-w4-tooling.md` — W4 工具链设计、三处步骤修正、两格配置与读数口径
-- `w4/README.md` — W4 执行清单（脚手架已备、实验仍未做；用户本人填密钥后执行）
+- `w4/README.md` — W4 执行清单（两格已执行一次、未产收益结论；产物与数字边界）
 - `docs/resume.md` — 可直接抄写的简历 bullet + 每个数字的边界 + 不能写进简历的话
 - `docs/interview.md` — 七组追问预案，每题「可说的话 / 依据 / 不许越界的话」
 - `README.en.md` — 与本文八个章节一一对齐的英文版
 - `bridge/README.md` — 如何挂 P1 负载、W4 直连步骤与红线
 - `experiments/runs/` — 回放归档三件（**随仓库入库**，`clone` 即可复查）
 - `experiments/views/replay-aa1142308d8d.html` — 示例 trace 视图（可逐字节复验）
-- `tests/` — 213 条 unittest（含 W5–W6 叙事守门 23 条、W4 工具链守门 33 条）；核心零依赖，`test_app.py` 在装了 fastapi 时才跑
+- `tests/` — 全量 unittest（含 W5–W6 叙事守门、W4 工具链守门、metrics 快照守门）；核心零依赖，`test_app.py` 在装了 fastapi 时才跑
 
 ## 阶段
 
@@ -165,8 +168,9 @@ docker compose --profile verify run --rm verify
 | W1 | 设计写死、四能力核心、回放基准、FastAPI 薄适配、单测 | 已交付 |
 | W2 | 并发 / 容量闸门 / single-flight、SSE 完整语义、可选真实供应商适配器、并发不变量 | 已交付 |
 | W3 | 可选容器复现、负载不变量、trace 回放视图 | 已交付 |
-| W4 | 挂 P1 harness 直连跑真实对照（需用户本人执行与 API 预算；`w4/` 脚手架已备） | 未做 |
+| W4 | 挂 P1 harness 直连跑真实对照（用户本人已执行；产物在 `w4/out/` 未入库） | 已执行一次（未产结论） |
 | W5–W6 | 英文 README、简历 bullet、面试追问预案、叙事红线守门 | 本轮交付 |
 
 每阶段一个 commit、可随时停，不自动扩张。W5–W6 是纯文档收尾、零行为代码变更，
 所有对外表述受 `docs/design-w5-w6.md` 的禁用短语清单约束。许可证：MIT。
+W4 已执行一次但未产收益结论，对外不得写成「W4 已完成」或「已验证网关收益」。

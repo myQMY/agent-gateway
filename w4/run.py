@@ -194,6 +194,32 @@ def print_gateway_diagnosis() -> None:
               f"(attempt {item.get('attempt')})")
 
 
+def capture_metrics(cell: str) -> None:
+    """网关关闭前把决策计数快照落盘；本地 HTTP，零模型调用、零 API 成本。
+
+    旧版 finally 直接 terminate 网关，而 /metrics 是纯内存计数，进程一关全部丢失，
+    w4/README.md 却把它列为产物。这里只写 w4/out/（已 gitignore），响应里只有
+    计数与 config_hash，不含密钥、消息内容或模型输出；失败时优雅降级，
+    不掩盖 cell 的原始异常。
+    """
+    try:
+        with urlopen(GATEWAY + "/metrics", timeout=2.0) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except (HTTPError, URLError, TimeoutError, ValueError) as exc:
+        print(f"  （未能抓取网关 /metrics 快照：{exc}；本格决策计数未留档）")
+        return
+    OUT.mkdir(parents=True, exist_ok=True)
+    path = OUT / f"metrics-{cell}.json"
+    payload = {
+        "cell": cell,
+        "gateway_metrics": data,
+        "note": "本地 HTTP 快照；不是账单，不与 W1 归档相减或拼曲线",
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                    encoding="utf-8")
+    print(f"  网关 /metrics 快照已写入 w4/out/{path.name}")
+
+
 def run_cell(cell: str, p1_root: Path, max_calls: int) -> None:
     cmd = build_command(cell, max_calls)
     print(f"\n=== cell {cell} ===")
@@ -279,6 +305,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\n已中止：{exc}")
         return 1
     finally:
+        # 必须在 stop_gateway 之前：/metrics 是内存计数，进程终止后无法回溯。
+        if proc is not None and need_gateway and not args.serve_only:
+            for c in cells:
+                if c == "on":
+                    capture_metrics(c)
         stop_gateway(proc)
 
 

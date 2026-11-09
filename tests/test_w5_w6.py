@@ -116,13 +116,14 @@ class TestBannedPhraseSource(unittest.TestCase):
         phrases = banned_phrases()
         self.assertGreaterEqual(len(phrases), 20)
         for sample in ("智能客服", "通用 Agent 评测平台", "生产级网关",
-                       "production-ready gateway", "W4 completed"):
+                       "production-ready gateway", "W4 completed",
+                       "W4 验证了网关收益", "verified gateway benefit on real models"):
             self.assertIn(sample, phrases)
         self.assertEqual(len(phrases), len(set(phrases)), "清单里有重复行")
 
     def test_design_declares_w5_w6_red_lines(self):
         d = text(DESIGN)
-        for phrase in ("首句", "W4 仍不做", "不许说的话", "否定语境豁免",
+        for phrase in ("首句", "W4 口径", "不许说的话", "否定语境豁免",
                        "反面示例", "单一真相来源"):
             self.assertIn(phrase, d)
 
@@ -211,7 +212,7 @@ class TestEnglishReadmeParity(unittest.TestCase):
         for phrase in ("deterministic fake", "simulated latency",
                        "concurrency invariants", "byte-for-byte",
                        "optional container", "read-only trace view",
-                       "Two Disjoint Paths", "Not done"):
+                       "Two Disjoint Paths", "Executed once"):
             self.assertIn(phrase, d, f"英文 README 缺少术语「{phrase}」")
 
     def test_english_readme_links_back_to_chinese(self):
@@ -246,22 +247,33 @@ class TestNumbersCarryBoundaries(unittest.TestCase):
                         )
 
 
-class TestW4StillNotDone(unittest.TestCase):
-    """W4 需要用户本人执行 + API 预算，三份文档都不得写成已做。"""
+class TestW4BoundaryWording(unittest.TestCase):
+    """两格真实链路回放已执行一次；所有文档必须带「未产收益结论」的边界。"""
 
-    def test_all_external_docs_mark_w4_as_pending(self):
-        for rel, marker in (("README.en.md", "Not done"),
-                            ("docs/resume.md", "未做"),
-                            ("docs/interview.md", "未做")):
+    def test_all_external_docs_carry_the_new_boundary(self):
+        for rel, marker in (("README.en.md", "Executed once"),
+                            ("docs/resume.md", "已执行一次"),
+                            ("docs/interview.md", "已执行一次")):
             with self.subTest(doc=rel):
                 d = text(rel)
                 self.assertIn("W4", d)
                 self.assertIn(marker, d)
 
-    def test_design_and_readme_keep_w4_pending(self):
-        for rel in ("docs/design.md", "README.md", "docs/design-w5-w6.md"):
+    def test_design_and_readme_carry_the_new_boundary(self):
+        for rel in ("docs/design.md", "README.md", "docs/design-w5-w6.md",
+                    "docs/design-w4-tooling.md", "bridge/README.md", "w4/README.md"):
             with self.subTest(doc=rel):
-                self.assertIn("未做", text(rel))
+                self.assertIn("已执行一次", text(rel))
+
+    def test_no_external_doc_claims_a_positive_result(self):
+        for rel in EXTERNAL_DOCS:
+            with self.subTest(doc=rel):
+                self.assertEqual(find_violations(text(rel)), [])
+
+    def test_guard_would_catch_an_overclaim(self):
+        fake = "## 结果\n\nW4 验证了网关收益，真实链路证明省钱。\n"
+        hits = find_violations(fake, ["W4 验证了网关收益", "真实链路证明省钱"])
+        self.assertEqual(len(hits), 2)
 
 
 class TestIndexContract(unittest.TestCase):

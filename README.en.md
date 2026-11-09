@@ -196,13 +196,13 @@ Do not say (kept here so the contract test can strip it):
 - `docs/design-w3.md` — W3 boundaries, concurrency-window fix, container-not-executed note
 - `docs/design-w5-w6.md` — W5–W6 narrative red lines and the machine-readable banned-phrase list
 - `docs/design-w4-tooling.md` — W4 tooling design, three step corrections, two-cell config, metric caveats
-- `w4/README.md` — W4 execution checklist (scaffold ready, experiment still not done; the user fills the key and runs it)
+- `w4/README.md` — W4 execution checklist (two-cell replay Executed once by the user, no benefit claim; artifacts and numeric boundaries)
 - `docs/resume.md` — resume bullets with verifiable numbers and boundaries (Chinese)
 - `docs/interview.md` — grouped interview Q&A with evidence links (Chinese)
 - `bridge/README.md` — how to attach the P1 workload, W4 steps and red lines
 - `experiments/runs/` — replay archives (three files each, **committed**, inspectable after clone)
 - `experiments/views/replay-aa1142308d8d.html` — example trace view (byte-reproducible)
-- `tests/` — 213 unittest cases (23 W5–W6 narrative contract tests, 33 W4 tooling contract tests); the core has zero dependencies, `test_app.py` runs only when fastapi is installed
+- `tests/` — full unittest suite (W5–W6 narrative guards, W4 tooling guards, metrics snapshot guards); the core has zero dependencies, `test_app.py` runs only when fastapi is installed
 
 ## Stages
 
@@ -211,8 +211,15 @@ Do not say (kept here so the contract test can strip it):
 | W1 | Design frozen, four-capability core, replay baseline, thin FastAPI adapter, tests | Delivered |
 | W2 | Concurrency / capacity gate / single-flight, complete SSE semantics, optional real-provider adapter | Delivered |
 | W3 | Optional container replay, load invariants, read-only trace view | Delivered |
-| W4 | Attach the P1 harness runtime directly (requires the user's own API budget and execution) | Not done |
+| W4 | Attach the P1 harness runtime directly (executed by the user once; artifacts in `w4/out/`, not committed) | Executed once (no positive result) |
 | W5–W6 | English README, resume bullets, interview Q&A | **Delivered this round** |
+
+W4 two-cell real-provider replay **Executed once** by the user on 2026-11-09 (real API cost
+incurred; off direct / on via gateway, 30 trials each, distinct run_ids). Both cells score
+pass^1 = pass^3 = 0.00, which is the expected result of the frozen P1 grader, not evidence
+for or against the gateway. No positive pass^k result, no verification of gateway benefit;
+the two cells differ in independent variables — no subtraction, no curve, no cost-saving claim.
+Gateway /metrics counters were not persisted in that run (tooling defect, fixed for later runs).
 
 One commit per stage, stoppable at any point, no automatic scope expansion. License: MIT.
 Chinese version: [README.md](README.md).
