@@ -170,9 +170,12 @@ class TestEnvTemplatesHaveNoSecrets(unittest.TestCase):
             rel = p.relative_to(ROOT).as_posix()
             if rel.startswith("w4/out/") or (rel.startswith("w4/") and rel.endswith(".env")):
                 continue
+            if "__pycache__" in p.parts or p.suffix in (".pyc", ".pyo"):
+                continue  # 真实执行后生成的字节码，非文本且不入库
             with self.subTest(file=rel):
+                content = p.read_bytes().decode("utf-8", errors="replace")
                 self.assertFalse(
-                    bool(SECRET_RE.search(p.read_text(encoding="utf-8"))),
+                    bool(SECRET_RE.search(content)),
                     f"{rel} 含疑似密钥（守门不打印命中内容，避免二次泄漏）")
 
     def test_secret_scanner_would_catch_a_leaked_key(self):
@@ -406,6 +409,93 @@ class TestTerminalStepsAreRunnable(unittest.TestCase):
         """自检：切目录的说明必须排在三步之前，不能又埋到文末。"""
         d = text("w4/README.md")
         self.assertLess(d.index("Set-Location"), d.index("## 三步"))
+
+
+class TestW4FailureDiagnosis(unittest.TestCase):
+    """2026-11-09 实跑暴露：密钥两处填写易不一致，502 的真实原因被 traceback 吞掉。"""
+
+    def test_start_gateway_injects_off_env_key(self):
+        from w4 import run as w4run
+        fake = "TEST_KEY_NOT_REAL"
+        with mock.patch.object(w4run, "read_env", return_value={"LLM_API_KEY": fake}), \
+             mock.patch.object(w4run.subprocess, "Popen") as popen:
+            w4run.start_gateway()
+        env = popen.call_args.kwargs["env"]
+        self.assertEqual(env["LLM_API_KEY"], fake)
+        self.assertNotIn(fake, str(popen.call_args.args[0]))
+
+    def test_injected_key_is_never_printed(self):
+        from w4 import run as w4run
+        fake = "TEST_KEY_NOT_REAL"
+        buf = io.StringIO()
+        with mock.patch.object(w4run, "read_env", return_value={"LLM_API_KEY": fake}), \
+             mock.patch.object(w4run.subprocess, "Popen"), \
+             redirect_stdout(buf):
+            w4run.start_gateway()
+        self.assertNotIn(fake, buf.getvalue())
+
+    def test_off_env_is_the_single_source_over_manual_env_var(self):
+        """自检：即使用户终端里设了另一份值，也以 off.env 为准。"""
+        from w4 import run as w4run
+        with mock.patch.object(w4run, "read_env",
+                               return_value={"LLM_API_KEY": "FROM_FILE"}), \
+             mock.patch.dict(w4run.os.environ, {"LLM_API_KEY": "FROM_TERMINAL"}), \
+             mock.patch.object(w4run.subprocess, "Popen") as popen:
+            w4run.start_gateway()
+        self.assertEqual(popen.call_args.kwargs["env"]["LLM_API_KEY"], "FROM_FILE")
+
+    def test_serve_records_error_kinds_only(self):
+        src = text("w4/serve.py")
+        self.assertIn("class RecordingUpstream", src)
+        self.assertIn('"error_kind": reply.error_kind', src)
+        self.assertIn('@app.get("/w4/last-error")', src)
+        self.assertNotIn("request.messages", src)
+        self.assertIn("create_app(upstream=UPSTREAM, concurrent=False)", src)
+
+    def test_last_error_endpoint_never_returns_key_material(self):
+        block = text("w4/serve.py").split("def w4_last_error", 1)[1]
+        self.assertNotIn("os.environ", block)
+        self.assertNotIn("api_key_present", block)
+        self.assertIn('"errors"', block)
+
+    def test_diagnosis_reads_local_endpoint_only(self):
+        src = text("w4/run.py")
+        self.assertIn('GATEWAY + "/w4/last-error"', src)
+        head = src.split("def print_gateway_diagnosis", 1)[1].split("def run_cell", 1)[0]
+        self.assertNotIn("chat/completions", head)
+
+    def test_on_cell_failure_triggers_diagnosis(self):
+        from w4 import run as w4run
+        with mock.patch.object(w4run.subprocess, "run",
+                               return_value=mock.Mock(returncode=1)), \
+             mock.patch.object(w4run, "print_gateway_diagnosis") as diag, \
+             redirect_stdout(io.StringIO()):
+            with self.assertRaises(RuntimeError):
+                w4run.run_cell("on", Path("."), 720)
+        self.assertTrue(diag.called)
+
+    def test_off_cell_failure_does_not_query_gateway(self):
+        """off 格直连、根本没起网关，不能去查网关端点。"""
+        from w4 import run as w4run
+        with mock.patch.object(w4run.subprocess, "run",
+                               return_value=mock.Mock(returncode=1)), \
+             mock.patch.object(w4run, "print_gateway_diagnosis") as diag, \
+             redirect_stdout(io.StringIO()):
+            with self.assertRaises(RuntimeError):
+                w4run.run_cell("off", Path("."), 720)
+        self.assertFalse(diag.called)
+
+    def test_readme_documents_502_and_single_cell_rerun(self):
+        d = text("w4/README.md")
+        self.assertIn("--cell on --execute", d)
+        self.assertIn("auth_error", d)
+        self.assertIn("/w4/last-error", d)
+        self.assertIn("不打印", d)
+
+    def test_guard_would_catch_regression_to_plain_upstream(self):
+        old = ("UPSTREAM = RealUpstream(RealUpstreamConfig(...))\n"
+               "app = create_app(upstream=UPSTREAM, concurrent=False)\n")
+        self.assertNotIn("error_kind", old)
 
 
 if __name__ == "__main__":

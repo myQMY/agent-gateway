@@ -1,6 +1,7 @@
 # W4 执行清单（用户本人操作）
 
-> **本目录是脚手架，不是 W4 本身**：W4 依旧未做、未执行、未产生任何 API 成本。
+> **本目录是脚手架，不是 W4 本身**：完整的两格对照结论依旧未做，阶段表与外部文档仍标「未做」。
+> 脚手架本身零成本；只有你亲自跑 `--execute` 才会调用真实供应商并产生账单。
 > 设计依据 [docs/design-w4-tooling.md](../docs/design-w4-tooling.md)。
 > 真实密钥只由你本人填写，`w4/*.env` 已被 `.gitignore` 忽略，仓库里永不出现密钥。
 
@@ -96,26 +97,51 @@ preflight 全部通过再进第 3 步。`$PY` 必须是装了 `requirements.txt`
 PowerShell：
 
 ```powershell
-$env:LLM_API_KEY = "你的真实key"   # 网关进程读的是 os.environ，不是 env 文件
 & $PY -m w4.run --execute
 ```
 
 bash：
 
 ```bash
-export LLM_API_KEY="你的真实key"
 "$PY" -m w4.run --execute
 ```
 
-`$env:LLM_API_KEY` / `export` 只对**当前终端及其子进程**生效，必须在启动
-`w4.run` 的同一个终端里设置；`w4/run.py` 用 `os.environ.copy()` 把它传给网关子进程。
-关掉终端再开就要重设，但 `w4/off.env` 里的 key 不用再动。
+**不用再手设 `$env:LLM_API_KEY` / `export`**：`w4/run.py` 会从 `w4/off.env`
+读取同一个 key，只覆盖网关子进程的环境变量（不打印、不落盘、不写进产物）。
+密钥只有一个真相源，避免「终端里那份和文件里那份不一致」导致上游 401、
+网关却映射成 502。手动设置仍兼容，但会被 `off.env` 覆盖。
 
 脚本自动完成：起 `w4.serve:app` → 用 `GET /w4/upstream` 做零成本自检
 （确认不是 `fake` 上游、密钥确实注入）→ 依次跑 `off` / `on` 两格 → 关闭网关。
 
 两格各 `--max-calls 720`，合计调用上限 1440 次。`experiments/w4_budget_estimate.md`
 给出的离线上界约 0.2484 USD/格（≈¥1.8），最保守按 ¥8.55 准备，**以服务商账单为准**。
+
+### 若 on 格报 `HTTP Error 502`
+
+502 是 `GatewayEngine` 把「上游全部失败」映射出来的状态码，**不代表 P1 或判分器
+出错**；P1 的 traceback 只显示 `HTTP Error 502`，看不到网关响应体里的 `error.message`。
+现在 `w4/serve.py` 会把每次上游失败的 `error_kind` 记在内存里，`w4/run.py` 在 cell
+失败时自动通过 `GET /w4/last-error` 打印出来（零成本，不含密钥与消息内容）：
+
+```
+  - deepseek-flash: auth_error (attempt 0)
+  - gateway-fallback: upstream_5xx (attempt 1)
+```
+
+| error_kind | 含义 | 处理 |
+| --- | --- | --- |
+| `auth_error` | 上游 401/403，或网关进程没读到 key | 核对 `w4/off.env` 的 key 是否有效 |
+| `upstream_rate_limit` | 上游 429 | 稍后重试，或调小 `--max-calls` |
+| `upstream_5xx` | 上游返回其它 HTTP 错误（含 400） | 看服务商状态；`gateway-fallback` 是内部假名，第二次必然失败，属噪音 |
+| `timeout` | 30s 超时或网络不可达 | 检查网络 / 代理后重试 |
+| `invalid_response` | 上游响应解析失败 | 核对模型名与服务商协议 |
+
+**只重跑失败的那一格，别重跑已成功的一格**（off 的产物保留在 `w4/out/runs-off/`）：
+
+```powershell
+& $PY -m w4.run --cell on --execute
+```
 
 只想跑一格做调试：`--cell off`（直连，不需要网关）或 `--cell on`（经网关）。
 想额外花一次调用确认返回的不是 `fake:` 文本：
