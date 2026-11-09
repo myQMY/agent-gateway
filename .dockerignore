@@ -6,6 +6,8 @@ __pycache__/
 .venv/
 venv/
 .env
+w4/*.env
+w4/out/
 results/
 traces/
 tmp/

@@ -1,0 +1,14 @@
+# P4 W4 工具链 · 直连对照组（设计依据：docs/design-w4-tooling.md §3）
+# 与 gw_on.toml 唯一不同的自变量是 name；name 不同才生成不同 run_id。
+# 两格自变量不同（是否经网关 + 缓存 + 模型输出非确定性），数字不相减、不拼曲线。
+
+[experiment]
+name = "w4_gw_off"
+tasks = "tasks/mvp_10.jsonl"
+k = 3
+backend = "openai"
+compare = ""
+
+[guards]
+max_steps = 12
+max_json_retries = 2

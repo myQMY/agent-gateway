@@ -1,0 +1,16 @@
+# P4 W4 工具链 · 经网关格（设计依据：docs/design-w4-tooling.md §3）
+# 与 gw_off.toml 唯一不同的自变量是 name；name 不同才生成不同 run_id，
+# 否则两格会互相覆盖归档。compare 留空：非空但留档不存在时 P1 会拒绝启动。
+# 故意不写 [guards].enabled（护栏全关）与 [seeded]（fpm=0）：
+# 这不是 P1 的护栏 A/B，也不注入输出级故障。
+
+[experiment]
+name = "w4_gw_on"
+tasks = "tasks/mvp_10.jsonl"
+k = 3
+backend = "openai"
+compare = ""
+
+[guards]
+max_steps = 12
+max_json_retries = 2

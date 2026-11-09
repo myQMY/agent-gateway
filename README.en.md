@@ -195,12 +195,14 @@ Do not say (kept here so the contract test can strip it):
 - `docs/design-w2.md` — W2 scope, the two-path trade-off, concurrency model, lifecycle fix
 - `docs/design-w3.md` — W3 boundaries, concurrency-window fix, container-not-executed note
 - `docs/design-w5-w6.md` — W5–W6 narrative red lines and the machine-readable banned-phrase list
+- `docs/design-w4-tooling.md` — W4 tooling design, three step corrections, two-cell config, metric caveats
+- `w4/README.md` — W4 execution checklist (scaffold ready, experiment still not done; the user fills the key and runs it)
 - `docs/resume.md` — resume bullets with verifiable numbers and boundaries (Chinese)
 - `docs/interview.md` — grouped interview Q&A with evidence links (Chinese)
 - `bridge/README.md` — how to attach the P1 workload, W4 steps and red lines
 - `experiments/runs/` — replay archives (three files each, **committed**, inspectable after clone)
 - `experiments/views/replay-aa1142308d8d.html` — example trace view (byte-reproducible)
-- `tests/` — 180 unittest cases (23 of them W5–W6 narrative contract tests); the core has zero dependencies, `test_app.py` runs only when fastapi is installed
+- `tests/` — 213 unittest cases (23 W5–W6 narrative contract tests, 33 W4 tooling contract tests); the core has zero dependencies, `test_app.py` runs only when fastapi is installed
 
 ## Stages
 

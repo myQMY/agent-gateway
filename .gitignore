@@ -10,3 +10,5 @@ htmlcov/
 /traces/
 /results/
 /tmp/
+/w4/out/
+/w4/*.env
